@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'Cabinet Grotesk', 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar for enterprise dashboards */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.8);
+}
+
+/* Document highlighter animation */
+@keyframes pulse-highlight {
+  0%, 100% {
+    background-color: rgba(254, 240, 138, 0.6);
+  }
+  50% {
+    background-color: rgba(253, 224, 71, 0.9);
+  }
+}
+
+.highlight-critical {
+  background-color: rgba(254, 202, 202, 0.6);
+  border-bottom: 2px solid #ef4444;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.highlight-warning {
+  background-color: rgba(254, 240, 138, 0.6);
+  border-bottom: 2px solid #eab308;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.highlight-info {
+  background-color: rgba(186, 230, 253, 0.6);
+  border-bottom: 2px solid #0284c7;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
