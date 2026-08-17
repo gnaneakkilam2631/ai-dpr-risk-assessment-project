@@ -1,457 +1,983 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import {
-  FileText,
-  AlertTriangle,
-  HeartPulse,
-  Flame,
-  Plus,
-  ArrowRight,
-  Filter,
-  Search,
-  Building,
-  CheckCircle2,
-  ExternalLink,
-  ChevronRight,
-  TrendingUp,
-  MapPin,
-} from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import { useProject } from '../context/ProjectContext';
-import { StatsCard } from '../components/common/StatsCard';
-import { RiskBadge } from '../components/common/RiskBadge';
+import React from "react";
 
-const RISK_BAR_DATA = [
-  { name: 'Roads & Highways', Low: 24, Medium: 18, High: 9, Critical: 4 },
-  { name: 'Water & Sanitation', Low: 32, Medium: 12, High: 4, Critical: 1 },
-  { name: 'Healthcare', Low: 14, Medium: 8, High: 5, Critical: 2 },
-  { name: 'Bridges & Tunnels', Low: 6, Medium: 7, High: 8, Critical: 5 },
-  { name: 'Power & Energy', Low: 18, Medium: 6, High: 2, Critical: 0 },
-];
+export function DashboardPage() {
+  const userString = localStorage.getItem("user");
 
-const RISK_DONUT_DATA = [
-  { name: 'Cost Risk', value: 34, color: '#ef4444' },
-  { name: 'Schedule Risk', value: 28, color: '#f97316' },
-  { name: 'Technical Risk', value: 16, color: '#f59e0b' },
-  { name: 'Financial Risk', value: 22, color: '#3b82f6' },
-  { name: 'Environmental Risk', value: 14, color: '#10b981' },
-  { name: 'Compliance Risk', value: 10, color: '#8b5cf6' },
-];
+  let user: {
+    id?: number;
+    name?: string;
+    email?: string;
+  } | null = null;
 
-export const DashboardPage: React.FC = () => {
-  const { projects, setActiveProjectById, criticalFindings, setActiveEvidenceTarget } = useProject();
-  const navigate = useNavigate();
-  const [filterSector, setFilterSector] = useState<string>('ALL');
-  const [searchTable, setSearchTable] = useState<string>('');
+  try {
+    user = userString ? JSON.parse(userString) : null;
+  } catch {
+    user = null;
+  }
 
-  const filteredProjects = projects.filter((p) => {
-    const matchesSector = filterSector === 'ALL' || p.sector === filterSector;
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchTable.toLowerCase()) ||
-      p.state.toLowerCase().includes(searchTable.toLowerCase()) ||
-      p.location.toLowerCase().includes(searchTable.toLowerCase());
-    return matchesSector && matchesSearch;
-  });
+  const riskData = [
+    { name: "Cost Risk", value: 73 },
+    { name: "Schedule Risk", value: 81 },
+    { name: "Technical Risk", value: 42 },
+    { name: "Financial Risk", value: 67 },
+    { name: "Environmental", value: 59 },
+    { name: "Compliance", value: 28 },
+  ];
 
-  const handleOpenProject = (id: string) => {
-    setActiveProjectById(id);
-    navigate('/dpr-analysis');
-  };
-
-  const handleViewEvidence = (finding: (typeof criticalFindings)[0]) => {
-    setActiveEvidenceTarget({
-      page: finding.pageNumber,
-      section: finding.section,
-      title: finding.title,
-    });
-    navigate('/evidence');
-  };
+  const contradictionData = [5, 8, 6, 11, 9, 14, 12, 14, 10, 14, 13, 14];
 
   return (
-    <div className="space-y-6">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-h-full space-y-6 pb-10">
+
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
-            Project Intelligence Dashboard
+          <div className="mb-2 flex items-center gap-2">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.8)]" />
+
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400">
+              Intelligence Overview
+            </span>
+          </div>
+
+          <h1 className="text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+            Dashboard
           </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Monitor DPR quality, project risks, and critical findings across capital infrastructure portfolios.
+
+          <p className="mt-1 text-sm text-slate-400 md:text-base">
+            Welcome back,{" "}
+            <span className="font-semibold text-slate-200">
+              {user?.name || "Guardian User"}
+            </span>
+            . Here's your DPR intelligence overview.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/upload')}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 transition cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            + Analyze New DPR
-          </button>
-        </div>
-      </div>
+        <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-[#0b1220] px-4 py-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
 
-      {/* 4 SUMMARY KPI CARDS (BENTO STRIP) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs dark:bg-[#0c1427] dark:border-slate-800">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">DPRs Analyzed</span>
-            <div className="p-1.5 bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 rounded-lg">
-              <FileText className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-sans">128</span>
-            <span className="text-[10px] text-green-600 dark:text-emerald-400 font-medium">+12% ↑</span>
-          </div>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Active DPR lifecycle review</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs dark:bg-[#0c1427] dark:border-slate-800">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">High Risk Projects</span>
-            <div className="p-1.5 bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 rounded-lg">
-              <Flame className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-sans">17</span>
-            <span className="text-[10px] text-red-600 dark:text-rose-400 font-medium">+3 critical</span>
-          </div>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Requires immediate mitigation</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs dark:bg-[#0c1427] dark:border-slate-800">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg. Health Score</span>
-            <div className="p-1.5 bg-green-50 text-green-600 dark:bg-emerald-950/60 dark:text-emerald-400 rounded-lg">
-              <HeartPulse className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-sans">81<span className="text-sm text-slate-400 font-normal">/100</span></span>
-            <span className="text-[10px] text-green-600 dark:text-emerald-400 font-medium">Optimal</span>
-          </div>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Consistent documentation quality</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs dark:bg-[#0c1427] dark:border-slate-800">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Critical Findings</span>
-            <div className="p-1.5 bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 rounded-lg">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-sans">23</span>
-            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Pending action</span>
-          </div>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">AI-detected contradictions</p>
-        </div>
-      </div>
-
-      {/* MAIN BENTO GRID (2 COLUMNS: TABLE + SIDEBAR TILES) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT 2-COLUMN BENTO: RECENT DPR ANALYSIS TABLE */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-xs dark:border-slate-800 dark:bg-[#0c1427] flex flex-col">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-5 gap-3">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Recent DPR Analysis</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Intelligence feed of latest project reviews</p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Filter projects..."
-                  value={searchTable}
-                  onChange={(e) => setSearchTable(e.target.value)}
-                  className="h-8 w-36 sm:w-44 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-2 text-xs text-slate-800 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                />
-              </div>
-
-              <select
-                value={filterSector}
-                onChange={(e) => setFilterSector(e.target.value)}
-                className="h-8 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 font-medium focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 cursor-pointer"
-              >
-                <option value="ALL">All Sectors</option>
-                <option value="Roads & Highways">Roads</option>
-                <option value="Water Supply & Sanitation">Water</option>
-                <option value="Healthcare">Healthcare</option>
-                <option value="Bridges & Tunnels">Bridges</option>
-              </select>
-
-              <button
-                onClick={() => {
-                  const csv = filteredProjects.map(p => `"${p.name}","${p.state}",${p.totalCostCr},${p.healthScore},"${p.overallRisk}"`).join('\n');
-                  const blob = new Blob([`Project,State,CostCr,HealthScore,OverallRisk\n${csv}`], { type: 'text/csv' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'DPR_Portfolio_Appraisals.csv';
-                  a.click();
-                }}
-                className="text-blue-600 dark:text-blue-400 text-[11px] font-bold hover:underline px-1 shrink-0 cursor-pointer"
-              >
-                Export CSV
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-900/80 sticky top-0">
-                <tr className="text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 text-[11px]">
-                  <th className="py-2.5 px-3 font-semibold">Project Name</th>
-                  <th className="py-2.5 px-2 font-semibold text-center">Health</th>
-                  <th className="py-2.5 px-2 font-semibold">Risk Level</th>
-                  <th className="py-2.5 px-2 font-semibold">Cost (Est.)</th>
-                  <th className="py-2.5 px-2 font-semibold">Status</th>
-                  <th className="py-2.5 px-3 font-semibold text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {filteredProjects.map((p) => (
-                  <tr
-                    key={p.id}
-                    onClick={() => handleOpenProject(p.id)}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
-                  >
-                    <td className="py-3 px-3">
-                      <div className="font-medium text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        {p.name}
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-mono">
-                        {p.state} • {p.sector}
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-center">
-                      <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${
-                        p.healthScore >= 80
-                          ? 'bg-green-100 text-green-700 dark:bg-green-950/80 dark:text-green-300'
-                          : p.healthScore >= 70
-                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300'
-                          : 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300'
-                      }`}>
-                        {p.healthScore}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2">
-                      <span className="flex items-center gap-1.5 text-[11px] font-medium">
-                        <span className={`w-2 h-2 rounded-full ${
-                          p.overallRisk === 'low'
-                            ? 'bg-green-500'
-                            : p.overallRisk === 'medium'
-                            ? 'bg-amber-500'
-                            : p.overallRisk === 'high'
-                            ? 'bg-orange-500'
-                            : 'bg-red-500'
-                        }`} />
-                        <span className="capitalize text-slate-700 dark:text-slate-300">{p.overallRisk}</span>
-                      </span>
-                    </td>
-                    <td className="py-3 px-2 font-medium font-mono text-slate-800 dark:text-slate-200">
-                      ₹{p.totalCostCr} Cr
-                    </td>
-                    <td className="py-3 px-2">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
-                        p.status === 'Approved with Conditions'
-                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                          : p.status === 'Flagged Issues'
-                          ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
-                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <span className="inline-flex items-center text-xs font-semibold text-blue-600 dark:text-blue-400 group-hover:underline">
-                        Review <ChevronRight className="h-3 w-3 ml-0.5" />
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* RIGHT 1-COLUMN BENTO STACK */}
-        <div className="space-y-6 flex flex-col">
-          {/* BENTO CARD 1: RISK DISTRIBUTION GAUGE */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs dark:border-slate-800 dark:bg-[#0c1427] flex flex-col">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Risk Distribution</h2>
-              <span className="text-[10px] font-semibold text-slate-400">124 Factors</span>
-            </div>
-
-            <div className="flex items-center justify-center h-36 relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={RISK_DONUT_DATA}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={48}
-                    outerRadius={65}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {RISK_DONUT_DATA.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(val) => [`${val}% Weight`, 'Category']}
-                    contentStyle={{
-                      backgroundColor: '#0f172a',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#f8fafc',
-                      fontSize: '11px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-base font-bold text-slate-900 dark:text-white font-sans">81%</span>
-                <span className="text-[9px] text-slate-400 font-medium">Avg. Health</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-400">
-                <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
-                <span className="truncate">Technical (45%)</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-400">
-                <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                <span className="truncate">Cost (20%)</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-400">
-                <span className="w-2 h-2 rounded-full bg-orange-400 shrink-0" />
-                <span className="truncate">Schedule (25%)</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="truncate">Env (10%)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* BENTO CARD 2: CRITICAL FINDINGS FEED */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs dark:border-slate-800 dark:bg-[#0c1427] flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Critical Findings</h2>
-              <Link to="/contradictions" className="text-[10px] font-bold text-blue-600 dark:text-cyan-400 hover:underline">
-                View All &rarr;
-              </Link>
-            </div>
-
-            <div className="space-y-2.5 overflow-y-auto max-h-72 pr-1">
-              <div
-                onClick={() => handleViewEvidence(criticalFindings[0])}
-                className="p-3 bg-red-50/80 dark:bg-red-950/40 border-l-4 border-red-500 rounded-r-lg hover:bg-red-100/70 dark:hover:bg-red-950/60 transition cursor-pointer"
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-[9px] font-bold text-red-700 dark:text-red-400 uppercase tracking-wider">CRITICAL</span>
-                  <span className="text-[9px] text-slate-400 font-mono">Sec 4.2 vs 7.4</span>
-                </div>
-                <p className="text-[11px] font-semibold text-slate-900 dark:text-slate-100 leading-tight">
-                  Budget inconsistency detected between Sec 4.2 & 7.1 (₹14.6 Cr variance)
-                </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Rural Connectivity Imp.</p>
-              </div>
-
-              <div
-                onClick={() => handleViewEvidence(criticalFindings[1])}
-                className="p-3 bg-orange-50/80 dark:bg-orange-950/40 border-l-4 border-orange-500 rounded-r-lg hover:bg-orange-100/70 dark:hover:bg-orange-950/60 transition cursor-pointer"
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-[9px] font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wider">HIGH</span>
-                  <span className="text-[9px] text-slate-400 font-mono">Sec 3.1 vs 8.2</span>
-                </div>
-                <p className="text-[11px] font-semibold text-slate-900 dark:text-slate-100 leading-tight">
-                  Schedule compression: unrealistic 12-month timeline vs 18-mo civil works
-                </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Hospital Expansion</p>
-              </div>
-
-              <div
-                onClick={() => handleViewEvidence(criticalFindings[2])}
-                className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border-l-4 border-amber-500 rounded-r-lg hover:bg-amber-100/70 dark:hover:bg-amber-950/60 transition cursor-pointer"
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">MEDIUM</span>
-                  <span className="text-[9px] text-slate-400 font-mono">Sec 9.4</span>
-                </div>
-                <p className="text-[11px] font-semibold text-slate-900 dark:text-slate-100 leading-tight">
-                  Missing Stage-1 Forest Clearance for 4.2 km corridor realignment
-                </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Integrated Water Supply</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* BOTTOM BENTO: SECTOR RISK STACKED BAR CHART */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs dark:border-slate-800 dark:bg-[#0c1427]">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-              Project Risk Overview by Sector
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Distribution of risk ratings across infrastructure sectors
-            </p>
-          </div>
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
-            128 DPRs Tracked
+          <span className="text-xs font-semibold text-slate-400">
+            AI ENGINE ONLINE
           </span>
         </div>
 
-        <div className="mt-4 h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={RISK_BAR_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 11, fill: '#94a3b8' }}
-                interval={0}
-              />
-              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#0f172a',
-                  border: '1px solid #334155',
-                  borderRadius: '8px',
-                  color: '#f8fafc',
-                  fontSize: '12px',
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-              <Bar dataKey="Low" fill="#10b981" stackId="a" />
-              <Bar dataKey="Medium" fill="#f59e0b" stackId="a" />
-              <Bar dataKey="High" fill="#f97316" stackId="a" />
-              <Bar dataKey="Critical" fill="#ef4444" stackId="a" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      </div>
+
+
+      {/* =====================================================
+          AUTHENTICATION / USER CARD
+      ===================================================== */}
+
+      <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-[#0b1220] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+
+        <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-blue-500/10 blur-3xl" />
+
+        <div className="relative">
+
+          <div className="mb-5 flex items-center justify-between">
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-400">
+                Workspace Identity
+              </p>
+
+              <h2 className="mt-1 text-xl font-bold text-white">
+                Authentication Successful
+              </h2>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="text-emerald-400"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </div>
+
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-3">
+
+            <UserInfo
+              label="IDENTITY"
+              value={user?.name || "Guardian User"}
+            />
+
+            <UserInfo
+              label="EMAIL"
+              value={user?.email || "Not available"}
+            />
+
+            <UserInfo
+              label="STATUS"
+              value="Authenticated"
+              success
+            />
+
+          </div>
+
         </div>
       </div>
+
+
+      {/* =====================================================
+          KPI CARDS
+      ===================================================== */}
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+
+        <MetricCard
+          title="DPR Health"
+          value="82"
+          suffix="/100"
+          subtitle="Overall document quality"
+          icon={<HealthIcon />}
+          accent="cyan"
+          progress={82}
+        />
+
+        <MetricCard
+          title="Risk Level"
+          value="HIGH"
+          subtitle="Requires mitigation"
+          icon={<RiskIcon />}
+          accent="red"
+          progress={78}
+        />
+
+        <MetricCard
+          title="Contradictions"
+          value="14"
+          subtitle="Cross-chapter conflicts"
+          icon={<WarningIcon />}
+          accent="amber"
+          progress={70}
+        />
+
+        <MetricCard
+          title="Critical Findings"
+          value="6"
+          subtitle="Require immediate review"
+          icon={<AlertIcon />}
+          accent="purple"
+          progress={60}
+        />
+
+      </div>
+
+
+      {/* =====================================================
+          MAIN ANALYTICS ROW
+      ===================================================== */}
+
+      <div className="grid gap-6 xl:grid-cols-[1.6fr_0.9fr]">
+
+        {/* =================================================
+            RISK DIMENSION CHART
+        ================================================= */}
+
+        <div className="rounded-2xl border border-slate-800 bg-[#0b1220] p-6">
+
+          <div className="mb-7 flex items-start justify-between">
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-400">
+                Risk Analytics
+              </p>
+
+              <h2 className="mt-1 text-xl font-bold text-white">
+                Multi-Dimensional Risk Assessment
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                AI-evaluated risk exposure across DPR dimensions
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2">
+              <span className="text-xs font-semibold text-slate-400">
+                LIVE ANALYSIS
+              </span>
+            </div>
+
+          </div>
+
+          <div className="space-y-5">
+
+            {riskData.map((item) => (
+              <RiskBar
+                key={item.name}
+                name={item.name}
+                value={item.value}
+              />
+            ))}
+
+          </div>
+
+        </div>
+
+
+        {/* =================================================
+            HEALTH GAUGE
+        ================================================= */}
+
+        <div className="rounded-2xl border border-slate-800 bg-[#0b1220] p-6">
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-400">
+              DPR Quality
+            </p>
+
+            <h2 className="mt-1 text-xl font-bold text-white">
+              Health Score
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Overall AI appraisal quality
+            </p>
+          </div>
+
+
+          <div className="flex flex-col items-center justify-center py-8">
+
+            <div
+              className="relative flex h-52 w-52 items-center justify-center rounded-full"
+              style={{
+                background:
+                  "conic-gradient(#22d3ee 0deg 295deg, #1e293b 295deg 360deg)",
+              }}
+            >
+
+              <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full border border-slate-800 bg-[#0b1220]">
+
+                <span className="text-5xl font-extrabold tracking-tight text-white">
+                  82
+                </span>
+
+                <span className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  out of 100
+                </span>
+
+              </div>
+
+            </div>
+
+            <div className="mt-6 flex items-center gap-2">
+
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+
+              <span className="text-sm font-semibold text-emerald-400">
+                GOOD DOCUMENT HEALTH
+              </span>
+
+            </div>
+
+          </div>
+
+
+          <div className="grid grid-cols-3 gap-2">
+
+            <SmallStat
+              label="Completeness"
+              value="91%"
+            />
+
+            <SmallStat
+              label="Consistency"
+              value="76%"
+            />
+
+            <SmallStat
+              label="Compliance"
+              value="84%"
+            />
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      {/* =====================================================
+          CONTRADICTION TREND + RISK DISTRIBUTION
+      ===================================================== */}
+
+      <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+
+        {/* CONTRADICTION TREND */}
+
+        <div className="rounded-2xl border border-slate-800 bg-[#0b1220] p-6">
+
+          <div className="mb-6 flex items-start justify-between">
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-400">
+                Detection History
+              </p>
+
+              <h2 className="mt-1 text-xl font-bold text-white">
+                Contradiction Activity
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                AI-detected inconsistencies across document analysis
+              </p>
+            </div>
+
+            <div className="text-right">
+
+              <p className="text-2xl font-bold text-white">
+                14
+              </p>
+
+              <p className="text-xs text-slate-500">
+                Current findings
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div className="relative h-56 w-full">
+
+            {/* GRID */}
+
+            <div className="absolute inset-0 flex flex-col justify-between">
+
+              {[20, 15, 10, 5, 0].map((value) => (
+                <div
+                  key={value}
+                  className="flex items-center gap-3"
+                >
+                  <span className="w-5 text-[10px] text-slate-600">
+                    {value}
+                  </span>
+
+                  <div className="h-px flex-1 bg-slate-800" />
+                </div>
+              ))}
+
+            </div>
+
+
+            {/* SVG GRAPH */}
+
+            <svg
+              viewBox="0 0 700 220"
+              preserveAspectRatio="none"
+              className="absolute inset-0 h-full w-full overflow-visible pl-7"
+            >
+
+              <defs>
+
+                <linearGradient
+                  id="lineGradient"
+                  x1="0"
+                  y1="0"
+                  x2="1"
+                  y2="0"
+                >
+                  <stop
+                    offset="0%"
+                    stopColor="#3b82f6"
+                  />
+
+                  <stop
+                    offset="100%"
+                    stopColor="#22d3ee"
+                  />
+                </linearGradient>
+
+                <linearGradient
+                  id="areaGradient"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="0%"
+                    stopColor="#22d3ee"
+                    stopOpacity="0.25"
+                  />
+
+                  <stop
+                    offset="100%"
+                    stopColor="#22d3ee"
+                    stopOpacity="0"
+                  />
+                </linearGradient>
+
+              </defs>
+
+
+              <path
+                d="M0 165 L64 132 L127 148 L191 99 L255 115 L318 66 L382 82 L445 66 L509 99 L573 66 L636 82 L700 66 L700 220 L0 220 Z"
+                fill="url(#areaGradient)"
+              />
+
+
+              <path
+                d="M0 165 L64 132 L127 148 L191 99 L255 115 L318 66 L382 82 L445 66 L509 99 L573 66 L636 82 L700 66"
+                fill="none"
+                stroke="url(#lineGradient)"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+
+              {[
+                [0, 165],
+                [64, 132],
+                [127, 148],
+                [191, 99],
+                [255, 115],
+                [318, 66],
+                [382, 82],
+                [445, 66],
+                [509, 99],
+                [573, 66],
+                [636, 82],
+                [700, 66],
+              ].map(([cx, cy], index) => (
+                <circle
+                  key={index}
+                  cx={cx}
+                  cy={cy}
+                  r="5"
+                  fill="#0b1220"
+                  stroke="#22d3ee"
+                  strokeWidth="3"
+                />
+              ))}
+
+            </svg>
+
+          </div>
+
+
+          <div className="mt-4 flex justify-between pl-8 text-[10px] uppercase tracking-wider text-slate-600">
+
+            <span>JAN</span>
+            <span>FEB</span>
+            <span>MAR</span>
+            <span>APR</span>
+            <span>MAY</span>
+            <span>JUN</span>
+            <span>JUL</span>
+            <span>AUG</span>
+
+          </div>
+
+        </div>
+
+
+        {/* RISK DISTRIBUTION */}
+
+        <div className="rounded-2xl border border-slate-800 bg-[#0b1220] p-6">
+
+          <div className="mb-5">
+
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-purple-400">
+              Risk Intelligence
+            </p>
+
+            <h2 className="mt-1 text-xl font-bold text-white">
+              Risk Distribution
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Current severity classification
+            </p>
+
+          </div>
+
+
+          <div className="flex items-center justify-center py-4">
+
+            <div
+              className="relative h-44 w-44 rounded-full"
+              style={{
+                background:
+                  "conic-gradient(#ef4444 0deg 125deg, #f59e0b 125deg 235deg, #22c55e 235deg 310deg, #64748b 310deg 360deg)",
+              }}
+            >
+
+              <div className="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-[#0b1220]">
+
+                <span className="text-3xl font-extrabold text-white">
+                  14
+                </span>
+
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                  Findings
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div className="mt-4 space-y-3">
+
+            <Legend
+              color="bg-red-500"
+              label="Critical"
+              value="5"
+            />
+
+            <Legend
+              color="bg-amber-400"
+              label="High"
+              value="4"
+            />
+
+            <Legend
+              color="bg-emerald-400"
+              label="Medium"
+              value="3"
+            />
+
+            <Legend
+              color="bg-slate-500"
+              label="Low"
+              value="2"
+            />
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      {/* =====================================================
+          AI FINDINGS
+      ===================================================== */}
+
+      <div className="rounded-2xl border border-slate-800 bg-[#0b1220] p-6">
+
+        <div className="mb-6 flex items-center justify-between">
+
+          <div>
+
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-400">
+              AI Priority Queue
+            </p>
+
+            <h2 className="mt-1 text-xl font-bold text-white">
+              Critical Findings
+            </h2>
+
+          </div>
+
+          <span className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-400">
+            6 REQUIRES ACTION
+          </span>
+
+        </div>
+
+
+        <div className="grid gap-3 md:grid-cols-3">
+
+          <FindingCard
+            severity="CRITICAL"
+            title="Budget Contradiction"
+            description="₹14.6 Cr variance detected between Executive Summary and BoQ Table 7.4."
+          />
+
+          <FindingCard
+            severity="HIGH"
+            title="Schedule Conflict"
+            description="Road surfacing overlaps with the identified peak monsoon execution window."
+          />
+
+          <FindingCard
+            severity="HIGH"
+            title="Environmental Clearance"
+            description="Required clearance evidence is missing from the submitted DPR documentation."
+          />
+
+        </div>
+
+      </div>
+
     </div>
   );
-};
+}
+
+
+/* ============================================================
+   USER INFO
+============================================================ */
+
+function UserInfo({
+  label,
+  value,
+  success = false,
+}: {
+  label: string;
+  value: string;
+  success?: boolean;
+}) {
+  return (
+    <div>
+
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+
+      <p
+        className={`mt-1 text-sm font-semibold ${
+          success ? "text-emerald-400" : "text-slate-200"
+        }`}
+      >
+        {value}
+      </p>
+
+    </div>
+  );
+}
+
+
+/* ============================================================
+   METRIC CARD
+============================================================ */
+
+function MetricCard({
+  title,
+  value,
+  suffix,
+  subtitle,
+  icon,
+  accent,
+  progress,
+}: {
+  title: string;
+  value: string;
+  suffix?: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  accent: "cyan" | "red" | "amber" | "purple";
+  progress: number;
+}) {
+  const accentClasses = {
+    cyan: {
+      text: "text-cyan-400",
+      bg: "bg-cyan-400",
+      border: "border-cyan-400/20",
+    },
+    red: {
+      text: "text-red-400",
+      bg: "bg-red-400",
+      border: "border-red-400/20",
+    },
+    amber: {
+      text: "text-amber-400",
+      bg: "bg-amber-400",
+      border: "border-amber-400/20",
+    },
+    purple: {
+      text: "text-purple-400",
+      bg: "bg-purple-400",
+      border: "border-purple-400/20",
+    },
+  };
+
+  const colors = accentClasses[accent];
+
+  return (
+    <div
+      className={`group relative overflow-hidden rounded-2xl border ${colors.border} bg-[#0b1220] p-5 transition duration-300 hover:-translate-y-1 hover:border-slate-600 hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)]`}
+    >
+
+      <div className="flex items-start justify-between">
+
+        <div>
+
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            {title}
+          </p>
+
+          <div className="mt-3 flex items-baseline gap-1">
+
+            <span className={`text-3xl font-extrabold ${colors.text}`}>
+              {value}
+            </span>
+
+            {suffix && (
+              <span className="text-sm font-semibold text-slate-600">
+                {suffix}
+              </span>
+            )}
+
+          </div>
+
+          <p className="mt-1 text-xs text-slate-500">
+            {subtitle}
+          </p>
+
+        </div>
+
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-xl border ${colors.border} bg-slate-900 ${colors.text}`}
+        >
+          {icon}
+        </div>
+
+      </div>
+
+
+      <div className="mt-5 h-1 overflow-hidden rounded-full bg-slate-800">
+
+        <div
+          className={`h-full rounded-full ${colors.bg}`}
+          style={{ width: `${progress}%` }}
+        />
+
+      </div>
+
+    </div>
+  );
+}
+
+
+/* ============================================================
+   RISK BAR
+============================================================ */
+
+function RiskBar({
+  name,
+  value,
+}: {
+  name: string;
+  value: number;
+}) {
+  let barColor = "bg-emerald-400";
+  let textColor = "text-emerald-400";
+
+  if (value >= 70) {
+    barColor = "bg-red-400";
+    textColor = "text-red-400";
+  } else if (value >= 50) {
+    barColor = "bg-amber-400";
+    textColor = "text-amber-400";
+  }
+
+  return (
+    <div>
+
+      <div className="mb-2 flex items-center justify-between">
+
+        <span className="text-sm font-medium text-slate-300">
+          {name}
+        </span>
+
+        <span className={`text-sm font-bold ${textColor}`}>
+          {value}%
+        </span>
+
+      </div>
+
+      <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+
+        <div
+          className={`h-full rounded-full ${barColor} transition-all duration-700`}
+          style={{ width: `${value}%` }}
+        />
+
+      </div>
+
+    </div>
+  );
+}
+
+
+/* ============================================================
+   SMALL STAT
+============================================================ */
+
+function SmallStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-center">
+
+      <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+        {label}
+      </p>
+
+      <p className="mt-1 text-sm font-bold text-slate-200">
+        {value}
+      </p>
+
+    </div>
+  );
+}
+
+
+/* ============================================================
+   LEGEND
+============================================================ */
+
+function Legend({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+
+      <div className="flex items-center gap-3">
+
+        <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
+
+        <span className="text-sm text-slate-400">
+          {label}
+        </span>
+
+      </div>
+
+      <span className="text-sm font-bold text-slate-200">
+        {value}
+      </span>
+
+    </div>
+  );
+}
+
+
+/* ============================================================
+   FINDING CARD
+============================================================ */
+
+function FindingCard({
+  severity,
+  title,
+  description,
+}: {
+  severity: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition hover:border-slate-700">
+
+      <div className="mb-3 flex items-center gap-2">
+
+        <span className="h-2 w-2 rounded-full bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)]" />
+
+        <span className="text-[10px] font-bold tracking-wider text-red-400">
+          {severity}
+        </span>
+
+      </div>
+
+      <h3 className="font-bold text-slate-200">
+        {title}
+      </h3>
+
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        {description}
+      </p>
+
+    </div>
+  );
+}
+
+
+/* ============================================================
+   ICONS
+============================================================ */
+
+function HealthIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M3 12h4l2-7 4 14 2-7h6" />
+    </svg>
+  );
+}
+
+
+function RiskIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M12 3 21 19H3L12 3Z" />
+      <path d="M12 9v4" />
+      <path d="M12 16h.01" />
+    </svg>
+  );
+}
+
+
+function WarningIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M4 5h16v14H4z" />
+      <path d="M8 9h8" />
+      <path d="M8 13h5" />
+    </svg>
+  );
+}
+
+
+function AlertIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5" />
+      <path d="M12 16h.01" />
+    </svg>
+  );
+}

@@ -1,338 +1,290 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
-interface User {
+interface UserProfile {
   id?: number;
   name?: string;
   email?: string;
-}
-
-function getUser(): User | null {
-  try {
-    const storedUser = localStorage.getItem("user");
-
-    if (!storedUser) {
-      return null;
-    }
-
-    return JSON.parse(storedUser) as User;
-  } catch (error) {
-    console.error("Unable to read user:", error);
-    return null;
-  }
-}
-
-function getInitial(name?: string) {
-  return name?.charAt(0)?.toUpperCase() || "U";
+  picture?: string;
+  role?: string;
 }
 
 export function ProfilePage() {
-  const user = getUser();
+  const [user, setUser] = useState<UserProfile | null>(null);
 
-  const name = user?.name || "User";
-  const email = user?.email || "user@example.com";
-  const id = user?.id ?? "—";
-  const initial = getInitial(name);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  /* =========================================================
+     LOAD USER
+  ========================================================= */
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+
+    if (!storedUser) {
+      return;
+    }
+
+    try {
+      const parsedUser: UserProfile =
+        JSON.parse(storedUser);
+
+      setUser(parsedUser);
+      setName(parsedUser.name || "");
+    } catch (err) {
+      console.error(
+        "Unable to read stored user:",
+        err
+      );
+    }
+  }, []);
+
+
+  /* =========================================================
+     SAVE PROFILE
+  ========================================================= */
+
+  const handleSave = async (
+    event: React.FormEvent
+  ) => {
+    event.preventDefault();
+
+    setMessage("");
+    setError("");
+
+    if (!name.trim()) {
+      setError("Please enter your name.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      /*
+       * Keep Gmail/email unchanged.
+       * Only the display name is editable.
+       */
+
+      const updatedUser: UserProfile = {
+        ...user,
+        name: name.trim(),
+      };
+
+      /*
+       * Update local application user immediately.
+       */
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(updatedUser)
+      );
+
+      setUser(updatedUser);
+
+      setMessage(
+        "Profile updated successfully."
+      );
+
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        "Unable to update your profile."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
+  /* =========================================================
+     UI
+  ========================================================= */
 
   return (
     <div className="space-y-6">
 
-      {/* ================= PAGE HEADER ================= */}
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-slate-500 mb-2">
-            <span>Home</span>
-            <span>›</span>
-            <span className="text-slate-300">Profile</span>
-          </div>
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Profile
+        </h1>
 
-          <h1 className="text-3xl font-bold text-white">
-            Profile
-          </h1>
-
-          <p className="mt-1 text-sm text-slate-400">
-            Manage your AI–DPR Guardian account information
-          </p>
-        </div>
-
-        {/* Account status */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-          <span className="text-xs font-medium text-emerald-400">
-            ACTIVE ACCOUNT
-          </span>
-        </div>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage your AI-DPR Guardian profile.
+        </p>
       </div>
 
 
-      {/* ================= PROFILE CARD ================= */}
+      {/* =====================================================
+          PROFILE CARD
+      ===================================================== */}
 
-      <div className="rounded-2xl border border-slate-800 bg-[#0c1424] shadow-2xl overflow-hidden">
+      <div className="max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
 
-        {/* Top profile section */}
+        {/* PROFILE HEADER */}
 
-        <div className="relative px-8 py-8 border-b border-slate-800">
+        <div className="flex items-center gap-4 border-b border-gray-200 pb-6">
 
-          {/* subtle background glow */}
+          {/* AVATAR */}
 
-          <div className="absolute top-0 right-0 w-72 h-72 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative flex items-center gap-6">
-
-            {/* Avatar */}
-
-            <div className="relative">
-
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white text-3xl font-bold shadow-[0_0_30px_rgba(37,99,235,0.25)]">
-                {initial}
-              </div>
-
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#0c1424] flex items-center justify-center">
-                <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              </div>
-
+          {user?.picture ? (
+            <img
+              src={user.picture}
+              alt="Profile"
+              className="h-16 w-16 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white">
+              {(
+                user?.name ||
+                user?.email ||
+                "U"
+              )
+                .charAt(0)
+                .toUpperCase()}
             </div>
-
-
-            {/* User information */}
-
-            <div>
-              <h2 className="text-2xl font-bold text-white">
-                {name}
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-400">
-                {email}
-              </p>
-
-              <div className="flex items-center gap-2 mt-3">
-
-                <span className="px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400">
-                  Standard User
-                </span>
-
-                <span className="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-xs text-slate-400">
-                  ID #{id}
-                </span>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-
-        {/* ================= ACCOUNT INFORMATION ================= */}
-
-        <div className="p-8">
-
-          <div className="flex items-center gap-3 mb-6">
-
-            <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-blue-400"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold text-white">
-                Account Information
-              </h3>
-
-              <p className="text-xs text-slate-500">
-                Your registered account details
-              </p>
-            </div>
-
-          </div>
-
-
-          {/* Information grid */}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-            {/* Full Name */}
-
-            <div className="rounded-xl border border-slate-800 bg-[#0a1120] p-5 hover:border-slate-700 transition-colors">
-
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                  Full Name
-                </span>
-
-                <span className="text-xs text-emerald-400">
-                  Verified
-                </span>
-              </div>
-
-              <p className="text-base font-medium text-slate-200">
-                {name}
-              </p>
-
-            </div>
-
-
-            {/* Email */}
-
-            <div className="rounded-xl border border-slate-800 bg-[#0a1120] p-5 hover:border-slate-700 transition-colors">
-
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                  Email Address
-                </span>
-
-                <span className="text-xs text-emerald-400">
-                  Verified
-                </span>
-              </div>
-
-              <p className="text-base font-medium text-slate-200 break-all">
-                {email}
-              </p>
-
-            </div>
-
-
-            {/* User ID */}
-
-            <div className="rounded-xl border border-slate-800 bg-[#0a1120] p-5 hover:border-slate-700 transition-colors">
-
-              <div className="mb-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                  User ID
-                </span>
-              </div>
-
-              <p className="text-base font-mono text-blue-400">
-                #{id}
-              </p>
-
-            </div>
-
-
-            {/* Account Type */}
-
-            <div className="rounded-xl border border-slate-800 bg-[#0a1120] p-5 hover:border-slate-700 transition-colors">
-
-              <div className="mb-3">
-                <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                  Account Type
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-
-                <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" />
-
-                <p className="text-base font-medium text-slate-200">
-                  User
-                </p>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* ================= SECURITY SECTION ================= */}
-
-          <div className="mt-8 pt-6 border-t border-slate-800">
-
-            <div className="flex items-center justify-between">
-
-              <div className="flex items-center gap-3">
-
-                <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-
-                  <svg
-                    className="w-5 h-5 text-cyan-400"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 15v2"
-                    />
-
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M8 10V8a4 4 0 118 0v2"
-                    />
-
-                    <rect
-                      x="5"
-                      y="10"
-                      width="14"
-                      height="10"
-                      rx="2"
-                    />
-                  </svg>
-
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-white">
-                    Account Security
-                  </h3>
-
-                  <p className="text-xs text-slate-500">
-                    Your account is protected by secure authentication
-                  </p>
-                </div>
-
-              </div>
-
-
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-
-                <span className="text-xs font-medium text-emerald-400">
-                  SECURE
-                </span>
-
-              </div>
-
-            </div>
-
+          )}
+
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {user?.name || "User"}
+            </h2>
+
+            <p className="text-sm text-gray-500">
+              {user?.email || "Email unavailable"}
+            </p>
           </div>
 
         </div>
 
-      </div>
+
+        {/* ===================================================
+            FORM
+        =================================================== */}
+
+        <form
+          onSubmit={handleSave}
+          className="mt-6 space-y-5"
+        >
+
+          {/* NAME */}
+
+          <div>
+
+            <label
+              htmlFor="profile-name"
+              className="mb-2 block text-sm font-semibold text-gray-700"
+            >
+              Name
+            </label>
+
+            <input
+              id="profile-name"
+              type="text"
+              value={name}
+              onChange={(event) =>
+                setName(event.target.value)
+              }
+              placeholder="Enter your name"
+              className="h-11 w-full rounded-xl border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            />
+
+          </div>
 
 
-      {/* ================= FOOTER INFO ================= */}
+          {/* EMAIL */}
 
-      <div className="flex items-center justify-between px-1">
+          <div>
 
-        <p className="text-xs text-slate-600">
-          AI–DPR Guardian • Risk Assessment Platform
-        </p>
+            <label
+              htmlFor="profile-email"
+              className="mb-2 block text-sm font-semibold text-gray-700"
+            >
+              Gmail / Email
+            </label>
 
-        <p className="text-xs text-slate-600">
-          Account ID: {id}
-        </p>
+            <input
+              id="profile-email"
+              type="email"
+              value={user?.email || ""}
+              disabled
+              readOnly
+              className="h-11 w-full cursor-not-allowed rounded-xl border border-gray-200 bg-gray-100 px-4 text-sm text-gray-500"
+            />
+
+            <p className="mt-2 text-xs text-gray-500">
+              Your Google account email cannot be changed.
+            </p>
+
+          </div>
+
+
+          {/* ROLE */}
+
+          <div>
+
+            <label
+              htmlFor="profile-role"
+              className="mb-2 block text-sm font-semibold text-gray-700"
+            >
+              Role
+            </label>
+
+            <input
+              id="profile-role"
+              type="text"
+              value={
+                user?.role || "DPR Evaluator"
+              }
+              disabled
+              readOnly
+              className="h-11 w-full cursor-not-allowed rounded-xl border border-gray-200 bg-gray-100 px-4 text-sm text-gray-500"
+            />
+
+          </div>
+
+
+          {/* SUCCESS */}
+
+          {message && (
+            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+              {message}
+            </div>
+          )}
+
+
+          {/* ERROR */}
+
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {error}
+            </div>
+          )}
+
+
+          {/* SAVE */}
+
+          <div className="flex justify-end pt-2">
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving
+                ? "Saving..."
+                : "Save Changes"}
+            </button>
+
+          </div>
+
+        </form>
 
       </div>
 

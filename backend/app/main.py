@@ -4,16 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from .routers import auth
 
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-# Create FastAPI application
+
 app = FastAPI(
     title="AI DPR Risk Assessment API",
     version="1.0.0"
 )
 
-# CORS - allows your frontend to communicate with backend
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -25,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Authentication routes
+
 app.include_router(auth.router)
 
 

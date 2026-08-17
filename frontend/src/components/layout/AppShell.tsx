@@ -1,691 +1,470 @@
-import React, { ReactNode, useEffect } from "react";
-import {
-  Link,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
-
+import React from "react";
 import {
   LayoutDashboard,
-  Upload,
   FileSearch,
-  AlertTriangle,
-  ShieldAlert,
-  FlaskConical,
-  ShieldCheck,
   Bot,
+  AlertTriangle,
   FileText,
+  ShieldAlert,
+  Lightbulb,
+  Upload,
+  FlaskConical,
   BarChart3,
-  User,
+  UserCircle,
   Settings,
+  LogOut,
+  ShieldCheck,
+  Sun,
+  Moon,
 } from "lucide-react";
 
-interface AppShellProps {
-  children: ReactNode;
-}
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
-interface UserData {
-  id?: number;
-  name?: string;
-  email?: string;
-}
-
-interface MenuItem {
-  name: string;
-  path: string;
-  icon: React.ComponentType<{
-    size?: number;
-    strokeWidth?: number;
-    className?: string;
-  }>;
-  badge?: string;
-  badgeText?: string;
-}
-
-export function AppShell({
-  children,
-}: AppShellProps) {
-  const location = useLocation();
+export default function AppShell() {
   const navigate = useNavigate();
 
-  const token =
-    localStorage.getItem("access_token");
+  const userString = localStorage.getItem("user");
 
-  /*
-   * =========================================================
-   * PUBLIC PAGES
-   * =========================================================
-   */
+  let user: {
+    id?: number;
+    name?: string;
+    email?: string;
+  } | null = null;
 
-  const publicPages = [
-    "/login",
-    "/register",
-  ];
-
-  const isPublicPage =
-    publicPages.includes(location.pathname);
-
-
-  /*
-   * =========================================================
-   * AUTH REDIRECT
-   * =========================================================
-   */
-
-  useEffect(() => {
-    if (!token && !isPublicPage) {
-      navigate("/login", {
-        replace: true,
-      });
-    }
-  }, [
-    token,
-    isPublicPage,
-    navigate,
-  ]);
-
-
-  /*
-   * Login and Register should not have
-   * the dashboard sidebar/header.
-   */
-
-  if (isPublicPage) {
-    return <>{children}</>;
+  try {
+    user = userString ? JSON.parse(userString) : null;
+  } catch {
+    user = null;
   }
 
+  const userName = user?.name || "User";
+  const userEmail = user?.email || "Not available";
 
-  /*
-   * Wait for redirect if there is
-   * no authentication token.
-   */
+  const [darkMode, setDarkMode] = React.useState(() => {
+    return (
+      localStorage.getItem("theme") !== "light"
+    );
+  });
 
-  if (!token) {
-    return null;
-  }
+  React.useEffect(() => {
+    const theme = darkMode ? "dark" : "light";
 
-
-  /*
-   * =========================================================
-   * LOGOUT
-   * =========================================================
-   */
-
-  const handleLogout = () => {
-    localStorage.removeItem(
-      "access_token"
+    document.documentElement.setAttribute(
+      "data-theme",
+      theme
     );
 
-    localStorage.removeItem("user");
+    localStorage.setItem("theme", theme);
+  }, [darkMode]);
 
-    navigate("/login", {
+  function logout() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("token_type");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("session_only");
+
+    navigate("/", {
       replace: true,
     });
-  };
+  }
 
-
-  /*
-   * =========================================================
-   * SIDEBAR MENU
-   * =========================================================
-   */
-
-  const menuItems: MenuItem[] = [
-    {
-      name: "Dashboard",
-      path: "/",
-      icon: LayoutDashboard,
-    },
-
-    {
-      name: "Upload DPR",
-      path: "/upload",
-      icon: Upload,
-    },
-
-    {
-      name: "DPR Analysis",
-      path: "/dpr-analysis",
-      icon: FileSearch,
-    },
-
-    {
-      name: "Contradictions",
-      path: "/contradictions",
-      icon: AlertTriangle,
-      badge: "5",
-    },
-
-    {
-      name: "Risk Intelligence",
-      path: "/risk-intelligence",
-      icon: ShieldAlert,
-    },
-
-    {
-      name: "What-If Simulator",
-      path: "/simulator",
-      icon: FlaskConical,
-    },
-
-    {
-      name: "Mitigation Advisor",
-      path: "/mitigation",
-      icon: ShieldCheck,
-    },
-
-    {
-      name: "DPR Copilot",
-      path: "/copilot",
-      icon: Bot,
-      badgeText: "AI",
-    },
-
-    {
-      name: "Evidence Viewer",
-      path: "/evidence",
-      icon: FileText,
-    },
-
-    {
-      name: "Reports",
-      path: "/reports",
-      icon: BarChart3,
-    },
-
-    {
-      name: "Profile",
-      path: "/profile",
-      icon: User,
-    },
-
-    {
-      name: "Settings",
-      path: "/settings",
-      icon: Settings,
-    },
-  ];
-
-
-  /*
-   * =========================================================
-   * USER
-   * =========================================================
-   */
-
-  const user = getUser();
-
-  const userName =
-    user?.name || "User";
-
-  const userEmail =
-    user?.email || "";
-
-  const userInitial =
-    userName
-      .charAt(0)
-      .toUpperCase();
-
-
-  /*
-   * =========================================================
-   * APP SHELL
-   * =========================================================
-   */
+  function navClass({
+    isActive,
+  }: {
+    isActive: boolean;
+  }) {
+    return `guardian-nav-link ${
+      isActive ? "guardian-nav-active" : ""
+    }`;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-
+    <div className="guardian-app">
 
       {/* =====================================================
-          SIDEBAR
+          HEADER
       ===================================================== */}
 
-      <aside
-        className="
-          w-64
-          bg-white
-          border-r
-          border-gray-200
-          fixed
-          left-0
-          top-0
-          bottom-0
-          flex
-          flex-col
-          z-40
-        "
-      >
+      <header className="guardian-header">
 
-        {/* ===================================================
-            LOGO
-        =================================================== */}
+        <div className="guardian-brand">
 
-        <div
-          className="
-            px-6
-            py-6
-            border-b
-            border-gray-200
-          "
-        >
+          <div className="guardian-brand-symbol">
+            AI
+          </div>
 
-          <div className="flex items-center gap-3">
+          <div>
+            <h1 className="guardian-brand-title">
+              AI-DPR Guardian
+            </h1>
 
-            {/* Logo icon */}
-
-            <div
-              className="
-                w-9
-                h-9
-                rounded-lg
-                bg-blue-600
-                text-white
-                flex
-                items-center
-                justify-center
-                shadow-sm
-              "
-            >
-              <ShieldCheck
-                size={20}
-                strokeWidth={2}
-              />
-            </div>
-
-
-            <div>
-
-              <h1
-                className="
-                  text-lg
-                  font-bold
-                  text-gray-900
-                  leading-tight
-                "
-              >
-                AI DPR Risk
-              </h1>
-
-              <p
-                className="
-                  text-[11px]
-                  text-gray-500
-                  mt-0.5
-                "
-              >
-                Risk Assessment Platform
-              </p>
-
-            </div>
-
+            <p className="guardian-brand-subtitle">
+              Quality &amp; Risk Intelligence
+            </p>
           </div>
 
         </div>
 
 
-        {/* ===================================================
-            NAVIGATION
-        =================================================== */}
+        {/* HEADER ACTIONS */}
 
-        <nav
-          className="
-            flex-1
-            px-3
-            py-4
-            overflow-y-auto
-          "
-        >
+        <div className="guardian-header-actions">
 
-          {menuItems.map((item) => {
+          <div className="guardian-status">
+            <span className="guardian-status-dot" />
+            SYSTEM ONLINE
+          </div>
 
-            const isActive =
-              location.pathname ===
-              item.path;
-
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`
-                  flex
-                  items-center
-                  gap-3
-                  px-4
-                  py-3
-                  mb-1
-                  rounded-lg
-                  text-sm
-                  font-medium
-                  transition-all
-                  duration-200
-                  ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }
-                `}
-              >
-
-                {/* ICON */}
-
-                <Icon
-                  size={18}
-                  strokeWidth={1.9}
-                  className="shrink-0"
-                />
-
-
-                {/* NAME */}
-
-                <span className="flex-1">
-                  {item.name}
-                </span>
-
-
-                {/* NUMBER BADGE */}
-
-                {item.badge && (
-                  <span
-                    className="
-                      min-w-[20px]
-                      h-[20px]
-                      px-1
-                      rounded-full
-                      bg-red-500
-                      text-white
-                      text-[10px]
-                      font-bold
-                      flex
-                      items-center
-                      justify-center
-                    "
-                  >
-                    {item.badge}
-                  </span>
-                )}
-
-
-                {/* AI BADGE */}
-
-                {item.badgeText && (
-                  <span
-                    className="
-                      px-2
-                      py-0.5
-                      rounded
-                      bg-cyan-50
-                      text-cyan-600
-                      border
-                      border-cyan-100
-                      text-[9px]
-                      font-bold
-                    "
-                  >
-                    {item.badgeText}
-                  </span>
-                )}
-
-              </Link>
-            );
-          })}
-
-        </nav>
-
-
-        {/* ===================================================
-            USER SECTION
-        =================================================== */}
-
-        <div
-          className="
-            p-4
-            border-t
-            border-gray-200
-          "
-        >
-
-          <Link
-            to="/profile"
-            className="
-              flex
-              items-center
-              gap-3
-              p-2
-              rounded-lg
-              hover:bg-gray-50
-              transition
-            "
-          >
-
-            {/* Avatar */}
-
-            <div
-              className="
-                w-10
-                h-10
-                rounded-full
-                bg-blue-600
-                text-white
-                flex
-                items-center
-                justify-center
-                font-semibold
-                shrink-0
-              "
-            >
-              {userInitial}
-            </div>
-
-
-            {/* User details */}
-
-            <div className="min-w-0 flex-1">
-
-              <p
-                className="
-                  text-sm
-                  font-semibold
-                  text-gray-800
-                  truncate
-                "
-              >
-                {userName}
-              </p>
-
-              <p
-                className="
-                  text-xs
-                  text-gray-500
-                  truncate
-                "
-              >
-                {userEmail}
-              </p>
-
-            </div>
-
-          </Link>
-
-
-          {/* Logout */}
 
           <button
-            onClick={handleLogout}
-            className="
-              mt-3
-              w-full
-              px-4
-              py-3
-              rounded-lg
-              bg-red-50
-              text-red-600
-              hover:bg-red-100
-              font-medium
-              text-sm
-              transition
-            "
+            type="button"
+            className="guardian-theme-button"
+            onClick={() =>
+              setDarkMode((previous) => !previous)
+            }
+            title={
+              darkMode
+                ? "Switch to light mode"
+                : "Switch to dark mode"
+            }
           >
-            Logout
+            {darkMode ? (
+              <Sun size={18} />
+            ) : (
+              <Moon size={18} />
+            )}
+          </button>
+
+
+          <button
+            type="button"
+            className="guardian-user"
+            onClick={() => navigate("/profile")}
+            title="Open profile"
+          >
+
+            <div className="guardian-user-avatar">
+              <UserCircle size={20} />
+            </div>
+
+            <div className="guardian-user-info">
+
+              <span className="guardian-user-name">
+                {userName}
+              </span>
+
+              <span className="guardian-user-role">
+                {userEmail}
+              </span>
+
+            </div>
+
+          </button>
+
+
+          <button
+            type="button"
+            className="guardian-logout"
+            onClick={logout}
+          >
+            <LogOut size={16} />
+            <span>Logout</span>
           </button>
 
         </div>
 
-      </aside>
+      </header>
 
 
       {/* =====================================================
-          MAIN AREA
+          MAIN LAYOUT
       ===================================================== */}
 
-      <div
-        className="
-          ml-64
-          flex-1
-          min-h-screen
-        "
-      >
+      <div className="guardian-layout">
 
 
         {/* ===================================================
-            TOP HEADER
+            SIDEBAR
         =================================================== */}
 
-        <header
-          className="
-            h-16
-            bg-white
-            border-b
-            border-gray-200
-            flex
-            items-center
-            justify-between
-            px-8
-            sticky
-            top-0
-            z-30
-          "
-        >
+        <aside className="guardian-sidebar">
 
-          {/* Page title */}
+          <div className="guardian-sidebar-top">
 
-          <div>
+            <p className="guardian-workspace-label">
+              WORKSPACE
+            </p>
 
-            <h2
-              className="
-                text-lg
-                font-semibold
-                text-gray-800
-              "
-            >
-              AI DPR Risk Assessment
-            </h2>
+
+            <nav className="guardian-navigation">
+
+
+              {/* DASHBOARD */}
+
+              <NavLink
+                to="/dashboard"
+                className={navClass}
+              >
+                <LayoutDashboard
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  Dashboard
+                </span>
+              </NavLink>
+
+
+              {/* DPR ANALYSIS */}
+
+              <NavLink
+                to="/dpr-analysis"
+                className={navClass}
+              >
+                <FileSearch
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  DPR Analysis
+                </span>
+              </NavLink>
+
+
+              {/* DPR COPILOT */}
+
+              <NavLink
+                to="/dpr-copilot"
+                className={navClass}
+              >
+                <Bot
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  DPR Copilot
+                </span>
+              </NavLink>
+
+
+              {/* CONTRADICTIONS */}
+
+              <NavLink
+                to="/contradictions"
+                className={navClass}
+              >
+                <AlertTriangle
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  Contradictions
+                </span>
+              </NavLink>
+
+
+              {/* EVIDENCE VIEWER */}
+
+              <NavLink
+                to="/evidence-viewer"
+                className={navClass}
+              >
+                <FileText
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  Evidence Viewer
+                </span>
+              </NavLink>
+
+
+              {/* RISK INTELLIGENCE */}
+
+              <NavLink
+                to="/risk-intelligence"
+                className={navClass}
+              >
+                <ShieldAlert
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  Risk Intelligence
+                </span>
+              </NavLink>
+
+
+              {/* MITIGATION ADVISOR */}
+
+              <NavLink
+                to="/mitigation-advisor"
+                className={navClass}
+              >
+                <Lightbulb
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  Mitigation Advisor
+                </span>
+              </NavLink>
+
+
+              {/* UPLOAD DPR */}
+
+              <NavLink
+                to="/upload-dpr"
+                className={navClass}
+              >
+                <Upload
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  Upload DPR
+                </span>
+              </NavLink>
+
+
+              {/* WHAT-IF SIMULATOR */}
+
+              <NavLink
+                to="/what-if-simulator"
+                className={navClass}
+              >
+                <FlaskConical
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  What-If Simulator
+                </span>
+              </NavLink>
+
+
+              {/* =================================================
+                  MANAGEMENT
+              ================================================= */}
+
+              <div className="guardian-section-label">
+                MANAGEMENT
+              </div>
+
+
+              {/* REPORTS */}
+
+              <NavLink
+                to="/reports"
+                className={navClass}
+              >
+                <BarChart3
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  Reports
+                </span>
+              </NavLink>
+
+
+              {/* PROFILE */}
+
+              <NavLink
+                to="/profile"
+                className={navClass}
+              >
+                <UserCircle
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  Profile
+                </span>
+              </NavLink>
+
+
+              {/* SETTINGS */}
+
+              <NavLink
+                to="/settings"
+                className={navClass}
+              >
+                <Settings
+                  size={20}
+                  strokeWidth={1.8}
+                />
+
+                <span>
+                  Settings
+                </span>
+              </NavLink>
+
+            </nav>
 
           </div>
 
 
-          {/* User */}
+          {/* ===================================================
+              SIDEBAR FOOTER
+          =================================================== */}
 
-          <div
-            className="
-              flex
-              items-center
-              gap-4
-            "
-          >
+          <div className="guardian-sidebar-footer">
 
-            <div className="text-right">
+            <div className="guardian-security-card">
 
-              <p
-                className="
-                  text-sm
-                  font-medium
-                  text-gray-800
-                "
-              >
-                {userName}
-              </p>
+              <div className="guardian-security-icon">
+                <ShieldCheck size={18} />
+              </div>
 
-              <p
-                className="
-                  text-xs
-                  text-gray-500
-                "
-              >
-                {userEmail}
-              </p>
+              <div>
+
+                <div className="guardian-security-title">
+                  SECURE WORKSPACE
+                </div>
+
+                <div className="guardian-security-text">
+                  Your DPR intelligence is protected.
+                </div>
+
+              </div>
 
             </div>
 
-
-            {/* Header avatar */}
-
-            <Link
-              to="/profile"
-              className="
-                w-9
-                h-9
-                rounded-full
-                bg-blue-600
-                text-white
-                flex
-                items-center
-                justify-center
-                font-semibold
-                hover:bg-blue-700
-                transition
-              "
-            >
-              {userInitial}
-            </Link>
-
           </div>
 
-        </header>
+        </aside>
 
 
         {/* ===================================================
-            PAGE CONTENT
+            MAIN CONTENT
+
+            Outlet renders Dashboard/Profile/Settings/etc.
         =================================================== */}
 
-        <main className="p-8">
-          {children}
+        <main className="guardian-main">
+
+          <div className="guardian-main-inner">
+
+            <Outlet />
+
+          </div>
+
         </main>
 
       </div>
 
     </div>
   );
-}
-
-
-/* =========================================================
-   USER HELPER
-========================================================= */
-
-function getUser(): UserData | null {
-  try {
-
-    const storedUser =
-      localStorage.getItem("user");
-
-    if (!storedUser) {
-      return null;
-    }
-
-    return JSON.parse(
-      storedUser
-    ) as UserData;
-
-  } catch (error) {
-
-    console.error(
-      "Unable to read user:",
-      error
-    );
-
-    return null;
-  }
 }

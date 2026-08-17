@@ -1,0 +1,13 @@
+DATABASE_URL=postgresql://postgres:2631@localhost:5432/ai-dpr-risk-assessment-project
+JWT_SECRET=Eef0BaV9NU_1aT0WJnb8DdX_obeTeCXdz8rZGo-l1Jo
+
+JWT_SECRET=put-a-long-random-secret-here
+
+GOOGLE_CLIENT_ID=YOUR_GOOGLE_WEB_CLIENT_ID
+
+FRONTEND_URL=http://localhost:5173
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-16-character-app-password

@@ -1,40 +1,103 @@
 import React from "react";
 import {
   BrowserRouter,
-  Routes,
-  Route,
   Navigate,
+  Route,
+  Routes,
 } from "react-router-dom";
 
-import { ProjectProvider } from "./context/ProjectContext";
-import { ThemeProvider } from "./context/ThemeContext";
-import { AppShell } from "./components/layout/AppShell";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
+import { ThemeProvider } from "./context/ThemeContext";
+import { ProjectProvider } from "./context/ProjectContext";
+
+import AppShell from "./components/layout/AppShell";
+
+// Authentication
+import LoginPage from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+
+// Main pages
 import { DashboardPage } from "./pages/DashboardPage";
-import { UploadDprPage } from "./pages/UploadDprPage";
-import { DprAnalysisPage } from "./pages/DprAnalysisPage";
+import { ReportsPage } from "./pages/ReportsPage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { ProfilePage } from "./pages/ProfilePage";
+
+// DPR pages
 import { ContradictionsPage } from "./pages/ContradictionsPage";
-import { RiskIntelligencePage } from "./pages/RiskIntelligencePage";
-import { WhatIfSimulatorPage } from "./pages/WhatIfSimulatorPage";
-import { MitigationAdvisorPage } from "./pages/MitigationAdvisorPage";
+import { DprAnalysisPage } from "./pages/DprAnalysisPage";
 import { DprCopilotPage } from "./pages/DprCopilotPage";
 import { EvidenceViewerPage } from "./pages/EvidenceViewerPage";
-import { ReportsPage } from "./pages/ReportsPage";
+import { MitigationAdvisorPage } from "./pages/MitigationAdvisorPage";
+import { RiskIntelligencePage } from "./pages/RiskIntelligencePage";
+import { UploadDprPage } from "./pages/UploadDprPage";
+import { WhatIfSimulatorPage } from "./pages/WhatIfSimulatorPage";
 
-import { LoginPage } from "./pages/LoginPage";
-import { RegisterPage } from "./pages/RegisterPage";
-import { ProfilePage } from "./pages/ProfilePage";
-import { SettingsPage } from "./pages/SettingsPage";
 
-export default function App() {
+/* =========================================================
+   AUTHENTICATION CHECK
+========================================================= */
+
+function isAuthenticated(): boolean {
+  return Boolean(
+    localStorage.getItem("access_token")
+  );
+}
+
+
+/* =========================================================
+   PROTECTED ROUTE
+========================================================= */
+
+function ProtectedRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  if (!isAuthenticated()) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
+  }
+
+  return <>{children}</>;
+}
+
+
+/* =========================================================
+   GOOGLE CLIENT ID
+========================================================= */
+
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
+
+/* =========================================================
+   APP
+========================================================= */
+
+function App() {
   return (
-    <ThemeProvider>
-      <ProjectProvider>
-        <BrowserRouter>
-          <AppShell>
+    <GoogleOAuthProvider
+      clientId={GOOGLE_CLIENT_ID}
+    >
+      <BrowserRouter>
+
+        <ThemeProvider>
+
+          <ProjectProvider>
+
             <Routes>
 
-              {/* Authentication */}
+              {/* =================================================
+                  PUBLIC AUTHENTICATION ROUTES
+              ================================================= */}
+
               <Route
                 path="/login"
                 element={<LoginPage />}
@@ -45,84 +108,147 @@ export default function App() {
                 element={<RegisterPage />}
               />
 
-              {/* Main application */}
+              <Route
+                path="/forgot-password"
+                element={<ForgotPasswordPage />}
+              />
+
+              <Route
+                path="/reset-password"
+                element={<ResetPasswordPage />}
+              />
+
+
+              {/* =================================================
+                  PROTECTED APPLICATION ROUTES
+              ================================================= */}
+
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <AppShell />
+                  </ProtectedRoute>
+                }
+              >
+
+                {/* Dashboard */}
+
+                <Route
+                  path="/dashboard"
+                  element={<DashboardPage />}
+                />
+
+
+                {/* DPR */}
+
+                <Route
+                  path="/dpr-analysis"
+                  element={<DprAnalysisPage />}
+                />
+
+                <Route
+                  path="/dpr-copilot"
+                  element={<DprCopilotPage />}
+                />
+
+                <Route
+                  path="/contradictions"
+                  element={<ContradictionsPage />}
+                />
+
+                <Route
+                  path="/evidence"
+                  element={<EvidenceViewerPage />}
+                />
+
+                <Route
+                  path="/risk-intelligence"
+                  element={<RiskIntelligencePage />}
+                />
+
+                <Route
+                  path="/mitigation-advisor"
+                  element={<MitigationAdvisorPage />}
+                />
+
+                <Route
+                  path="/upload-dpr"
+                  element={<UploadDprPage />}
+                />
+
+                <Route
+                  path="/what-if"
+                  element={<WhatIfSimulatorPage />}
+                />
+
+
+                {/* Other */}
+
+                <Route
+                  path="/reports"
+                  element={<ReportsPage />}
+                />
+
+                <Route
+                  path="/profile"
+                  element={<ProfilePage />}
+                />
+
+                <Route
+                  path="/settings"
+                  element={<SettingsPage />}
+                />
+
+              </Route>
+
+
+              {/* =================================================
+                  ROOT
+              ================================================= */}
+
               <Route
                 path="/"
-                element={<DashboardPage />}
+                element={
+                  <Navigate
+                    to={
+                      isAuthenticated()
+                        ? "/dashboard"
+                        : "/login"
+                    }
+                    replace
+                  />
+                }
               />
 
-              <Route
-                path="/upload"
-                element={<UploadDprPage />}
-              />
 
-              <Route
-                path="/dpr-analysis"
-                element={<DprAnalysisPage />}
-              />
+              {/* =================================================
+                  FALLBACK
+              ================================================= */}
 
-              <Route
-                path="/contradictions"
-                element={<ContradictionsPage />}
-              />
-
-              <Route
-                path="/risk-intelligence"
-                element={<RiskIntelligencePage />}
-              />
-
-              <Route
-                path="/simulator"
-                element={<WhatIfSimulatorPage />}
-              />
-
-              <Route
-                path="/mitigation"
-                element={<MitigationAdvisorPage />}
-              />
-
-              <Route
-                path="/copilot"
-                element={<DprCopilotPage />}
-              />
-
-              <Route
-                path="/evidence"
-                element={<EvidenceViewerPage />}
-              />
-
-              <Route
-                path="/reports"
-                element={<ReportsPage />}
-              />
-
-              {/* Profile */}
-              <Route
-                path="/profile"
-                element={<ProfilePage />}
-              />
-
-              {/* Settings */}
-              <Route
-                path="/settings"
-                element={<SettingsPage />}
-              />
-
-              {/* Unknown route */}
               <Route
                 path="*"
                 element={
                   <Navigate
-                    to="/"
+                    to={
+                      isAuthenticated()
+                        ? "/dashboard"
+                        : "/login"
+                    }
                     replace
                   />
                 }
               />
 
             </Routes>
-          </AppShell>
-        </BrowserRouter>
-      </ProjectProvider>
-    </ThemeProvider>
+
+          </ProjectProvider>
+
+        </ThemeProvider>
+
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   );
 }
+
+
+export default App;
