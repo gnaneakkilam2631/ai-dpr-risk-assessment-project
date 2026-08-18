@@ -1,287 +1,365 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FileSearch,
   ChevronLeft,
   ChevronRight,
   ZoomIn,
   ZoomOut,
-  Maximize2,
   Search,
-  CheckCircle2,
   AlertTriangle,
-  FileText,
-  Bookmark,
-  Share2,
-  Download,
-  Building,
-  Scale,
   Sparkles,
-} from 'lucide-react';
-import { useProject } from '../context/ProjectContext';
-import { RiskBadge } from '../components/common/RiskBadge';
+} from "lucide-react";
 
-interface EvidenceFindingItem {
+import { useProject } from "../context/ProjectContext";
+import { RiskBadge } from "../components/common/RiskBadge";
+
+type EvidenceFinding = {
   id: string;
   title: string;
   page: number;
   section: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
+  severity: "critical" | "high" | "medium" | "low";
   category: string;
   findingSummary: string;
   quotedText: string;
-  pageContent: {
-    chapter: string;
-    subheading: string;
-    bodyParagraphs: string[];
-    table?: {
-      title: string;
-      headers: string[];
-      rows: string[][];
-    };
-    highlightSentence: string;
-  };
-}
+  bodyParagraphs: string[];
+};
 
-const EVIDENCE_REGISTRY: EvidenceFindingItem[] = [
+const EVIDENCE_REGISTRY: EvidenceFinding[] = [
   {
-    id: 'ev-1',
-    title: 'Project Budget Mismatch: Executive Summary vs. Priced BoQ',
+    id: "ev-1",
+    title: "Project Budget Mismatch",
     page: 94,
-    section: 'Section 7.2 & Table 7.4',
-    severity: 'critical',
-    category: 'Financial',
+    section: "Section 7.2 & Table 7.4",
+    severity: "critical",
+    category: "Financial",
     findingSummary:
-      'Executive Summary Chapter 1 (Page 4) claims total outlay is ₹110.00 Cr, whereas detailed rate analysis and Priced Bill of Quantities aggregates to ₹124.60 Cr, generating an unbudgeted exposure of ₹14.60 Cr.',
+      "The DPR contains conflicting project cost figures between the executive summary and the detailed cost abstract.",
     quotedText:
-      'Total estimated capital expenditure for Package A, B & C aggregates to INR 124,60,00,000 (Rupees One Hundred Twenty-Four Crore Sixty Lakhs only), inclusive of 18% Goods & Services Tax and 2.5% physical contingencies.',
-    pageContent: {
-      chapter: 'CHAPTER 7: DETAILED FINANCIAL APPRAISAL & BILL OF QUANTITIES',
-      subheading: '7.2 Cost Abstract and Capital Outlay Summary',
-      bodyParagraphs: [
-        'The comprehensive cost analysis has been compiled in accordance with the Central Public Works Department (CPWD) Schedule of Rates 2024 with regional hill area index adjustments (1.28 multiplier).',
-        'Total estimated capital expenditure for Package A, B & C aggregates to INR 124,60,00,000 (Rupees One Hundred Twenty-Four Crore Sixty Lakhs only), inclusive of 18% Goods & Services Tax and 2.5% physical contingencies.',
-        'The revised structural estimate incorporates additional cross-drainage culverts (Chainage 14+200 to 28+400) necessitated by geotechnical slope stability recommendations submitted by the Regional Soil Testing Laboratory.',
-      ],
-      table: {
-        title: 'Table 7.4: Consolidated Abstract of Estimated Cost',
-        headers: ['Item No.', 'Component / Sub-head', 'Amount (INR)', 'Weightage (%)'],
-        rows: [
-          ['1.0', 'Earthwork, Cutting & Embankment', '₹28,45,00,000', '22.8%'],
-          ['2.0', 'Granular Sub-Base & WBM Layers', '₹34,12,00,000', '27.4%'],
-          ['3.0', 'Pavement Surfacing (DBM + BC)', '₹31,80,00,000', '25.5%'],
-          ['4.0', 'Cross Drainage & Major Bridges', '₹16,40,00,000', '13.2%'],
-          ['5.0', 'Bio-Engineering & Retaining Walls', '₹11,43,00,000', '9.2%'],
-          ['6.0', 'Physical Contingencies (2.5%)', '₹2,40,00,000', '1.9%'],
-          ['TOTAL', 'Consolidated Capital Cost Outlay', '₹124,60,00,000', '100.0%'],
-        ],
-      },
-      highlightSentence:
-        'Total estimated capital expenditure for Package A, B & C aggregates to INR 124,60,00,000 (Rupees One Hundred Twenty-Four Crore Sixty Lakhs only), inclusive of 18% Goods & Services Tax and 2.5% physical contingencies.',
-    },
+      "Detailed cost abstract and priced Bill of Quantities contain the consolidated capital cost used for appraisal.",
+    bodyParagraphs: [
+      "The detailed financial appraisal contains the consolidated project cost.",
+      "The cost should be reconciled with the executive summary before final approval.",
+      "Any difference should be supported by a revised financing proposal.",
+    ],
   },
+
   {
-    id: 'ev-2',
-    title: 'Schedule Compression & Monsoon Clash in Surfacing Activity',
+    id: "ev-2",
+    title: "Schedule and Monsoon Clash",
     page: 62,
-    section: 'Section 6.3',
-    severity: 'high',
-    category: 'Schedule',
+    section: "Section 6.3",
+    severity: "high",
+    category: "Schedule",
     findingSummary:
-      'Gantt schedule programs Dense Bituminous Macadam (DBM) laying during June–August, colliding directly with heavy precipitation (2,800 mm avg rainfall), which causes severe binder wash-off and IRC:37 violations.',
+      "The implementation schedule contains activities that may overlap with adverse weather conditions.",
     quotedText:
-      'Bituminous surfacing operations across Sector 2 (Km 18.00 to Km 42.00) are scheduled to commence in Week 38 and conclude by Week 48 (June to August 2026), utilizing 2 Nos. high-capacity sensor pavers.',
-    pageContent: {
-      chapter: 'CHAPTER 6: PROJECT EXECUTION SCHEDULE & WORK BREAKDOWN',
-      subheading: '6.3 Milestone Phasing & Critical Path Activity Mapping',
-      bodyParagraphs: [
-        'The project execution schedule has been prepared utilizing critical path methodology (CPM) assuming standard 6-day work weeks with two shifts during earthwork excavation.',
-        'Bituminous surfacing operations across Sector 2 (Km 18.00 to Km 42.00) are scheduled to commence in Week 38 and conclude by Week 48 (June to August 2026), utilizing 2 Nos. high-capacity sensor pavers.',
-        'Contractors shall maintain dry storage aggregates at central staging depots to minimize downtime during unseasonal weather fluctuations.',
-      ],
-      table: {
-        title: 'Table 6.2: Critical Path Activity Schedule',
-        headers: ['Activity ID', 'Task Description', 'Start Week', 'End Week', 'Critical'],
-        rows: [
-          ['ACT-04', 'Slope Excavation & Benching', 'W-04', 'W-24', 'Yes'],
-          ['ACT-09', 'Culvert Construction (24 Nos)', 'W-16', 'W-36', 'Yes'],
-          ['ACT-14', 'DBM Road Surfacing (Sector 2)', 'W-38 (June)', 'W-48 (Aug)', 'CRITICAL'],
-          ['ACT-19', 'Signage & Road Furniture', 'W-48', 'W-52', 'No'],
-        ],
-      },
-      highlightSentence:
-        'Bituminous surfacing operations across Sector 2 (Km 18.00 to Km 42.00) are scheduled to commence in Week 38 and conclude by Week 48 (June to August 2026), utilizing 2 Nos. high-capacity sensor pavers.',
-    },
+      "Bituminous surfacing operations are scheduled during the identified implementation window.",
+    bodyParagraphs: [
+      "The execution schedule should be reviewed against seasonal weather constraints.",
+      "Critical path activities should include suitable contingency.",
+    ],
   },
+
   {
-    id: 'ev-3',
-    title: 'Bridge Substructure Foundation Design Conflict',
+    id: "ev-3",
+    title: "Technical Foundation Conflict",
     page: 88,
-    section: 'Section 5.8 & Annexure IV',
-    severity: 'high',
-    category: 'Technical',
+    section: "Section 5.8",
+    severity: "high",
+    category: "Technical",
     findingSummary:
-      'Section 5.8 specifies open foundation on bedrock for Dikrong River Bridge (Chainage 18+400), but Borehole Log BH-04 indicates loose boulder-gravel strata requiring deep well/pile foundation.',
+      "The technical design should be checked against the latest geotechnical investigation.",
     quotedText:
-      'All major and minor bridges across the alignment shall be founded on open raft foundations resting on sound basalt rock at an average depth of 3.5 meters below bed level.',
-    pageContent: {
-      chapter: 'CHAPTER 5: STRUCTURAL ENGINEERING & CROSS DRAINAGE DESIGNS',
-      subheading: '5.8 Substructure and Foundation Design Parameters',
-      bodyParagraphs: [
-        'Hydraulic calculations have been executed based on IRC:78-2014 and 100-year return flood discharge estimates recorded at the State Central Water Commission gauging station.',
-        'All major and minor bridges across the alignment shall be founded on open raft foundations resting on sound basalt rock at an average depth of 3.5 meters below bed level.',
-        'Geotechnical investigation logs appended in Annexure IV indicate average allowable bearing capacity exceeding 450 kN/m2 across normal river crossing stretches.',
-      ],
-      highlightSentence:
-        'All major and minor bridges across the alignment shall be founded on open raft foundations resting on sound basalt rock at an average depth of 3.5 meters below bed level.',
-    },
+      "Foundation design parameters should be consistent with the geotechnical investigation findings.",
+    bodyParagraphs: [
+      "Review the foundation assumptions.",
+      "Confirm that the final design reflects the actual soil and rock conditions.",
+    ],
   },
+
   {
-    id: 'ev-4',
-    title: 'Forest Clearance Boundary GIS Coordinates Mismatch',
+    id: "ev-4",
+    title: "Environmental Clearance Variance",
     page: 112,
-    section: 'Section 8.4',
-    severity: 'medium',
-    category: 'Statutory',
+    section: "Section 8.4",
+    severity: "medium",
+    category: "Environmental",
     findingSummary:
-      'Environmental Impact Assessment claims forest land diversion of 14.2 hectares, but MoEFCC Parivesh Portal application records 18.6 hectares.',
+      "Environmental land diversion figures should be reconciled with the statutory application.",
     quotedText:
-      'The proposed road corridor involves diversion of 14.20 hectares of reserve forest land falling under the jurisdiction of the Sagalee Social Forestry Division.',
-    pageContent: {
-      chapter: 'CHAPTER 8: STATUTORY CLEARANCES & ENVIRONMENTAL MANAGEMENT',
-      subheading: '8.4 Forest Diversion and Wildlife Sanctuary Buffer Zones',
-      bodyParagraphs: [
-        'In accordance with the Forest (Conservation) Act, 1980, the proposal for diversion of reserve forest land has been demarcated using handheld DGPS receivers.',
-        'The proposed road corridor involves diversion of 14.20 hectares of reserve forest land falling under the jurisdiction of the Sagalee Social Forestry Division.',
-        'Net Present Value (NPV) calculation has been provisioned at Eco-Class II rates (₹14.50 Lakh per hectare) in the miscellaneous statutory head.',
-      ],
-      highlightSentence:
-        'The proposed road corridor involves diversion of 14.20 hectares of reserve forest land falling under the jurisdiction of the Sagalee Social Forestry Division.',
-    },
+      "The environmental chapter records the land diversion information used for appraisal.",
+    bodyParagraphs: [
+      "Reconcile the DPR value with the statutory application.",
+      "Update the environmental management and financial provisions if required.",
+    ],
   },
+
   {
-    id: 'ev-5',
-    title: 'Beneficiary Population Demarcation Variance',
+    id: "ev-5",
+    title: "Beneficiary Population Variance",
     page: 132,
-    section: 'Annexure IX',
-    severity: 'low',
-    category: 'Social',
+    section: "Annexure IX",
+    severity: "low",
+    category: "Social",
     findingSummary:
-      'Economic Return Chapter states project serves 84,500 beneficiaries, whereas Social Impact Survey specifies 54,200 direct village residents.',
+      "Different beneficiary definitions may be used across DPR chapters.",
     quotedText:
-      'Total direct beneficiary count across 42 habitations in Papum Pare district stands at 54,200 individuals as per 2021 census survey projections.',
-    pageContent: {
-      chapter: 'ANNEXURE IX: SOCIO-ECONOMIC SURVEY & BENEFICIARY ENUMERATION',
-      subheading: 'IX.1 Village Habitation Survey & Direct Impact Area',
-      bodyParagraphs: [
-        'Socio-economic baseline enumeration was conducted across 42 habitations situated within a 5 km buffer of the proposed road alignment.',
-        'Total direct beneficiary count across 42 habitations in Papum Pare district stands at 54,200 individuals as per 2021 census survey projections.',
-        'Indirect benefits extend to the broader regional market population of 84,500 individuals who utilize the corridor for healthcare and agricultural market access.',
-      ],
-      highlightSentence:
-        'Total direct beneficiary count across 42 habitations in Papum Pare district stands at 54,200 individuals as per 2021 census survey projections.',
-    },
+      "Direct and indirect beneficiary populations should be clearly distinguished.",
+    bodyParagraphs: [
+      "Identify direct beneficiaries separately from indirect beneficiaries.",
+      "Use one consistent definition throughout the DPR.",
+    ],
   },
 ];
 
+const MIN_PAGE = 1;
+const MAX_PAGE = 148;
+
 export const EvidenceViewerPage: React.FC = () => {
-  const { activeProject, activeEvidenceTarget, addToast } = useProject();
+  const { activeProject, activeEvidenceTarget } = useProject();
 
-  const [selectedFinding, setSelectedFinding] = useState<EvidenceFindingItem>(
-    EVIDENCE_REGISTRY[0]
+  const [selectedFinding, setSelectedFinding] =
+    useState<EvidenceFinding>(EVIDENCE_REGISTRY[0]);
+
+  const [currentPage, setCurrentPage] = useState<number>(
+    EVIDENCE_REGISTRY[0].page
   );
-  const [currentPage, setCurrentPage] = useState<number>(94);
-  const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Handle deep-link target if navigated from another page
-  useEffect(() => {
-    if (activeEvidenceTarget) {
-      const match = EVIDENCE_REGISTRY.find(
-        (f) =>
-          f.page === activeEvidenceTarget.page ||
-          f.section.includes(activeEvidenceTarget.section)
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  /*
+   * Resolve the document name without using ProjectDocument.name.
+   *
+   * Different versions of the ProjectContext may store the document
+   * under different fields, so we safely inspect the available object.
+   */
+  const documentName = useMemo(() => {
+    const dprFile = activeProject?.dprFile as
+      | Record<string, unknown>
+      | null
+      | undefined;
+
+    if (dprFile) {
+      const possibleNames = [
+        dprFile.fileName,
+        dprFile.filename,
+        dprFile.originalName,
+        dprFile.originalFilename,
+        dprFile.documentName,
+        dprFile.title,
+      ];
+
+      const foundName = possibleNames.find(
+        (value): value is string =>
+          typeof value === "string" && value.trim().length > 0
       );
-      if (match) {
-        setSelectedFinding(match);
-        setCurrentPage(match.page);
-      } else {
-        setCurrentPage(activeEvidenceTarget.page);
+
+      if (foundName) {
+        return foundName;
       }
+    }
+
+    const storedName = localStorage.getItem("active_document_name");
+
+    if (storedName && storedName.trim().length > 0) {
+      return storedName;
+    }
+
+    return "No DPR uploaded";
+  }, [activeProject]);
+
+  /*
+   * Deep-link from ContradictionsPage.
+   */
+  useEffect(() => {
+    if (!activeEvidenceTarget) {
+      return;
+    }
+
+    const targetSection =
+      activeEvidenceTarget.section?.toLowerCase() ?? "";
+
+    const targetTitle =
+      activeEvidenceTarget.title?.toLowerCase() ?? "";
+
+    const match = EVIDENCE_REGISTRY.find((finding) => {
+      const pageMatches =
+        finding.page === activeEvidenceTarget.page;
+
+      const sectionMatches =
+        targetSection.length > 0 &&
+        finding.section.toLowerCase().includes(targetSection);
+
+      const titleMatches =
+        targetTitle.length > 0 &&
+        finding.title.toLowerCase().includes(targetTitle);
+
+      return pageMatches || sectionMatches || titleMatches;
+    });
+
+    if (match) {
+      setSelectedFinding(match);
+      setCurrentPage(match.page);
+    } else {
+      setCurrentPage(
+        Math.min(
+          MAX_PAGE,
+          Math.max(MIN_PAGE, activeEvidenceTarget.page)
+        )
+      );
     }
   }, [activeEvidenceTarget]);
 
-  const handleSelectFinding = (finding: EvidenceFindingItem) => {
+  /*
+   * Select finding.
+   */
+  const handleSelectFinding = (finding: EvidenceFinding) => {
     setSelectedFinding(finding);
     setCurrentPage(finding.page);
   };
 
-  const handleZoom = (delta: number) => {
-    setZoomLevel((prev) => Math.min(150, Math.max(75, prev + delta)));
+  /*
+   * Change page.
+   */
+  const handlePreviousPage = () => {
+    setCurrentPage((page) =>
+      Math.max(MIN_PAGE, page - 1)
+    );
   };
+
+  const handleNextPage = () => {
+    setCurrentPage((page) =>
+      Math.min(MAX_PAGE, page + 1)
+    );
+  };
+
+  /*
+   * Zoom.
+   */
+  const handleZoom = (delta: number) => {
+    setZoomLevel((previous) =>
+      Math.min(
+        150,
+        Math.max(75, previous + delta)
+      )
+    );
+  };
+
+  /*
+   * Search findings.
+   */
+  const filteredFindings = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return EVIDENCE_REGISTRY;
+    }
+
+    return EVIDENCE_REGISTRY.filter((finding) => {
+      return (
+        finding.title.toLowerCase().includes(query) ||
+        finding.section.toLowerCase().includes(query) ||
+        finding.category.toLowerCase().includes(query) ||
+        finding.findingSummary.toLowerCase().includes(query) ||
+        finding.quotedText.toLowerCase().includes(query)
+      );
+    });
+  }, [searchQuery]);
 
   return (
     <div className="space-y-4">
-      {/* HEADER BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-3 border-b border-slate-200 dark:border-slate-800">
+      {/* =====================================================
+          HEADER
+      ====================================================== */}
+
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display flex items-center gap-2.5">
+          <h1 className="flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
             <FileSearch className="h-6 w-6 text-blue-600 dark:text-cyan-400" />
+
             Split-Screen Document Evidence Viewer
           </h1>
+
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Side-by-side audit corroborating AI findings against original indexed DPR PDF pages.
+            Corroborate AI findings against the uploaded DPR.
           </p>
         </div>
 
-        {/* CONTROLS (PAGE JUMP, ZOOM, SEARCH) */}
+        {/* =================================================
+            CONTROLS
+        ================================================== */}
+
         <div className="flex flex-wrap items-center gap-2">
-          {/* SEARCH BAR */}
+          {/* SEARCH */}
+
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+
             <input
               type="text"
-              placeholder="Search in PDF..."
+              placeholder="Search findings..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              onChange={(event) =>
+                setSearchQuery(event.target.value)
+              }
+              className="h-8 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
             />
           </div>
 
-          {/* PAGE PAGINATION */}
-          <div className="flex items-center rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-0.5">
+          {/* PAGE CONTROLS */}
+
+          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
             <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage <= 1}
-              className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+              type="button"
+              onClick={handlePreviousPage}
+              disabled={currentPage <= MIN_PAGE}
+              className="p-1 text-slate-500 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-white"
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="px-2 text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
-              Page {currentPage} of 148
+
+            <span className="px-2 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Page {currentPage}
             </span>
+
             <button
-              onClick={() => setCurrentPage((p) => Math.min(148, p + 1))}
-              disabled={currentPage >= 148}
-              className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 cursor-pointer"
+              type="button"
+              onClick={handleNextPage}
+              disabled={currentPage >= MAX_PAGE}
+              className="p-1 text-slate-500 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-white"
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
           {/* ZOOM CONTROLS */}
-          <div className="flex items-center rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-0.5">
+
+          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
             <button
+              type="button"
               onClick={() => handleZoom(-10)}
-              className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+              disabled={zoomLevel <= 75}
+              className="p-1 text-slate-500 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-white"
+              aria-label="Zoom out"
             >
               <ZoomOut className="h-4 w-4" />
             </button>
-            <span className="px-1.5 text-xs font-mono text-slate-600 dark:text-slate-400">
+
+            <span className="px-1.5 font-mono text-xs text-slate-600 dark:text-slate-400">
               {zoomLevel}%
             </span>
+
             <button
+              type="button"
               onClick={() => handleZoom(10)}
-              className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+              disabled={zoomLevel >= 150}
+              className="p-1 text-slate-500 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-white"
+              aria-label="Zoom in"
             >
               <ZoomIn className="h-4 w-4" />
             </button>
@@ -289,20 +367,33 @@ export const EvidenceViewerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* SPLIT-SCREEN CONTAINER */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 h-[calc(100vh-210px)]">
-        {/* LEFT PANEL: AI FINDINGS & EXPLANATION (5 COLS) */}
-        <div className="lg:col-span-5 flex flex-col space-y-4 overflow-y-auto pr-1">
-          {/* ACTIVE FINDING CARD */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#0c1427] space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+      {/* =====================================================
+          SPLIT SCREEN
+      ====================================================== */}
+
+      <div className="grid h-[calc(100vh-210px)] grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* ===================================================
+            LEFT PANEL
+        ==================================================== */}
+
+        <div className="flex flex-col space-y-4 overflow-y-auto pr-1 lg:col-span-5">
+          {/* ACTIVE FINDING */}
+
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#0c1427]">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <RiskBadge severity={selectedFinding.severity} size="sm" showPulse />
-                <span className="text-xs font-mono font-bold text-slate-500 uppercase">
+                <RiskBadge
+                  severity={selectedFinding.severity}
+                  size="sm"
+                  showPulse={selectedFinding.severity === "critical"}
+                />
+
+                <span className="text-xs font-mono font-bold uppercase text-slate-500">
                   {selectedFinding.category} Issue
                 </span>
               </div>
-              <span className="text-xs font-mono font-bold text-blue-600 dark:text-cyan-400 bg-blue-50 dark:bg-blue-950 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-900">
+
+              <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-xs font-bold text-blue-600 dark:border-blue-900 dark:bg-blue-950 dark:text-cyan-400">
                 Page {selectedFinding.page}
               </span>
             </div>
@@ -311,177 +402,210 @@ export const EvidenceViewerPage: React.FC = () => {
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 {selectedFinding.title}
               </h2>
-              <p className="text-xs font-mono text-slate-400 mt-0.5">
+
+              <p className="mt-0.5 font-mono text-xs text-slate-400">
                 Location: {selectedFinding.section}
               </p>
             </div>
 
-            {/* AI DIAGNOSTIC FINDING */}
-            <div className="space-y-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+            {/* AI SUMMARY */}
+
+            <div>
+              <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 <Sparkles className="h-3.5 w-3.5 text-cyan-500" />
-                AI Corroboration Summary:
+
+                AI Corroboration Summary
               </span>
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+
+              <p className="mt-1 rounded-xl border border-slate-200/80 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
                 {selectedFinding.findingSummary}
               </p>
             </div>
 
-            {/* GROUNDED QUOTE */}
-            <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3.5 dark:border-amber-900/40 dark:bg-amber-950/20 space-y-1">
-              <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
-                Extracted Document Excerpt:
+            {/* EXCERPT */}
+
+            <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3.5 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                Extracted Document Excerpt
               </span>
-              <div className="text-xs italic text-slate-800 dark:text-slate-200 font-serif leading-relaxed">
+
+              <div className="mt-1 font-serif text-xs italic leading-relaxed text-slate-800 dark:text-slate-200">
                 "{selectedFinding.quotedText}"
               </div>
             </div>
           </div>
 
-          {/* ALL FINDINGS ACCORDION / SELECTOR LIST */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-[#0c1427] space-y-3 flex-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Audit Findings in this DPR ({EVIDENCE_REGISTRY.length}):
-            </span>
+          {/* FINDING LIST */}
+
+          <div className="flex-1 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#0c1427]">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Audit Findings ({filteredFindings.length})
+              </span>
+
+              {searchQuery.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 dark:text-cyan-400"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
 
             <div className="space-y-2">
-              {EVIDENCE_REGISTRY.map((finding) => (
-                <button
-                  key={finding.id}
-                  onClick={() => handleSelectFinding(finding)}
-                  className={`w-full text-left rounded-xl p-3 text-xs transition border cursor-pointer ${
-                    selectedFinding.id === finding.id
-                      ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/60 font-semibold'
-                      : 'border-slate-200/80 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <RiskBadge severity={finding.severity} size="sm" />
-                    <span className="font-mono text-slate-400 text-[11px]">
-                      Page {finding.page}
-                    </span>
-                  </div>
-                  <div className="font-bold text-slate-900 dark:text-white truncate">
-                    {finding.title}
-                  </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                    {finding.section}
-                  </div>
-                </button>
-              ))}
+              {filteredFindings.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                  No findings match your search.
+                </div>
+              ) : (
+                filteredFindings.map((finding) => (
+                  <button
+                    key={finding.id}
+                    type="button"
+                    onClick={() =>
+                      handleSelectFinding(finding)
+                    }
+                    className={`w-full rounded-xl border p-3 text-left text-xs transition ${
+                      selectedFinding.id === finding.id
+                        ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/60"
+                        : "border-slate-200/80 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900"
+                    }`}
+                  >
+                    <div className="mb-1 flex items-center justify-between">
+                      <RiskBadge
+                        severity={finding.severity}
+                        size="sm"
+                      />
+
+                      <span className="font-mono text-[11px] text-slate-400">
+                        Page {finding.page}
+                      </span>
+                    </div>
+
+                    <div className="font-bold text-slate-900 dark:text-white">
+                      {finding.title}
+                    </div>
+
+                    <div className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                      {finding.section}
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>
 
-        {/* RIGHT PANEL: REALISTIC PDF DOCUMENT VIEWER (7 COLS) */}
-        <div className="lg:col-span-7 flex flex-col rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-200/80 dark:bg-slate-950 p-4 shadow-inner overflow-hidden">
-          <div className="flex items-center justify-between pb-2 text-xs text-slate-500 font-mono">
-            <span>DOCUMENT_STREAM: {activeProject.dprFile.name}</span>
-            <span>ZOOM: {zoomLevel}%</span>
+        {/* ===================================================
+            RIGHT DOCUMENT PANEL
+        ==================================================== */}
+
+        <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-300 bg-slate-200/80 p-4 shadow-inner dark:border-slate-800 dark:bg-slate-950 lg:col-span-7">
+          {/* DOCUMENT TOOLBAR */}
+
+          <div className="flex items-center justify-between gap-3 pb-2 font-mono text-xs text-slate-500">
+            <span
+              className="truncate"
+              title={documentName}
+            >
+              DOCUMENT_STREAM: {documentName}
+            </span>
+
+            <span className="shrink-0">
+              ZOOM: {zoomLevel}%
+            </span>
           </div>
 
-          {/* SIMULATED PDF PAGE PAPER CANVAS */}
-          <div className="flex-1 overflow-y-auto flex justify-center py-4">
+          {/* DOCUMENT VIEW */}
+
+          <div className="flex-1 overflow-auto py-4">
             <div
-              style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
-              className="w-full max-w-2xl bg-white text-slate-900 shadow-2xl p-8 sm:p-12 rounded-sm border border-slate-300 min-h-[750px] font-serif space-y-6 select-text transition-transform duration-150"
+              style={{
+                transform: `scale(${zoomLevel / 100})`,
+                transformOrigin: "top center",
+                marginBottom:
+                  zoomLevel > 100
+                    ? `${(zoomLevel - 100) * 5}px`
+                    : undefined,
+              }}
+              className="mx-auto min-h-[750px] w-full max-w-2xl space-y-6 rounded-sm border border-slate-300 bg-white p-8 font-serif text-slate-900 shadow-2xl transition-transform duration-150 sm:p-12"
             >
-              {/* WATERMARKED OFFICIAL HEADER */}
-              <div className="text-center pb-4 border-b-2 border-slate-800 space-y-1">
-                <div className="text-[10px] font-sans font-bold tracking-widest uppercase text-slate-600">
-                  GOVERNMENT OF ARUNACHAL PRADESH • PUBLIC WORKS DEPARTMENT
+              {/* DOCUMENT HEADER */}
+
+              <div className="space-y-1 border-b-2 border-slate-800 pb-4 text-center">
+                <div className="font-sans text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                  DPR INTELLIGENCE
                 </div>
-                <div className="text-xs font-sans font-semibold text-slate-800 uppercase">
-                  DETAILED PROJECT REPORT (DPR) FOR PMGSY / NEC HIGHWAY SPECIAL PACKAGE
+
+                <div className="font-sans text-xs font-semibold uppercase text-slate-800">
+                  Detailed Project Report
                 </div>
-                <div className="text-[10px] font-mono text-slate-500">
-                  DOCUMENT NO: PWD/AP/DPR/2025/RC-IV • VOLUME II (TECHNICAL & FINANCIAL)
+
+                <div className="font-mono text-[10px] text-slate-500">
+                  PROJECT: {activeProject?.name ?? "No Active Project"}
+                </div>
+
+                <div className="font-mono text-[10px] text-slate-500">
+                  DOCUMENT: {documentName}
                 </div>
               </div>
 
-              {/* CHAPTER HEADER */}
-              <div className="space-y-1 pt-2">
-                <h2 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-700">
-                  {selectedFinding.pageContent.chapter}
-                </h2>
-                <h3 className="text-sm font-sans font-bold text-slate-900">
-                  {selectedFinding.pageContent.subheading}
-                </h3>
+              {/* PAGE INFORMATION */}
+
+              <div className="flex items-center justify-between border-b border-slate-300 pb-2 font-sans text-xs text-slate-500">
+                <span>
+                  Section {selectedFinding.section}
+                </span>
+
+                <span>
+                  Page {currentPage}
+                </span>
               </div>
 
-              {/* BODY PARAGRAPHS WITH HIGHLIGHTED SNIPPET */}
-              <div className="space-y-4 text-xs leading-relaxed text-slate-800">
-                {selectedFinding.pageContent.bodyParagraphs.map((para, idx) => {
-                  const isHighlighted = para.includes(selectedFinding.pageContent.highlightSentence);
+              {/* FINDING TITLE */}
 
-                  return (
-                    <div
-                      key={idx}
-                      className={
-                        isHighlighted
-                          ? 'relative rounded-md bg-amber-100/80 p-3 border-2 border-amber-400 font-medium shadow-sm transition animate-pulse'
-                          : ''
-                      }
-                    >
-                      {isHighlighted && (
-                        <div className="absolute -top-3 left-3 bg-amber-500 text-white font-sans text-[9px] font-bold px-2 py-0.5 rounded shadow-xs">
-                          AI AUDIT DETECTED VULNERABILITY
-                        </div>
-                      )}
-                      <p>{para}</p>
-                    </div>
-                  );
-                })}
-              </div>
+              <h2 className="text-xl font-bold">
+                {selectedFinding.title}
+              </h2>
 
-              {/* DATA TABLE (IF PRESENT ON THIS PAGE) */}
-              {selectedFinding.pageContent.table && (
-                <div className="space-y-2 pt-2">
-                  <div className="text-[11px] font-sans font-bold text-slate-800">
-                    {selectedFinding.pageContent.table.title}
-                  </div>
-                  <div className="overflow-x-auto border border-slate-400">
-                    <table className="w-full text-[11px] text-left">
-                      <thead className="bg-slate-100 font-sans border-b border-slate-400">
-                        <tr>
-                          {selectedFinding.pageContent.table.headers.map((h, i) => (
-                            <th key={i} className="p-2 font-bold text-slate-900">
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-300 font-mono">
-                        {selectedFinding.pageContent.table.rows.map((row, rIdx) => {
-                          const isTotal = row[0] === 'TOTAL';
-                          return (
-                            <tr
-                              key={rIdx}
-                              className={isTotal ? 'bg-amber-100 font-bold' : 'hover:bg-slate-50'}
-                            >
-                              {row.map((cell, cIdx) => (
-                                <td key={cIdx} className="p-2">
-                                  {cell}
-                                </td>
-                              ))}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+              {/* BODY */}
+
+              {selectedFinding.bodyParagraphs.map(
+                (paragraph, index) => (
+                  <p
+                    key={`${selectedFinding.id}-paragraph-${index}`}
+                    className="text-sm leading-7"
+                  >
+                    {paragraph}
+                  </p>
+                )
               )}
 
-              {/* FOOTER & OFFICIAL SEAL */}
-              <div className="pt-8 border-t border-slate-300 flex items-center justify-between text-[10px] font-sans text-slate-500">
-                <div>
-                  <span>Superintending Engineer (Highway Circle II)</span>
-                  <div className="font-mono text-[9px]">Verified & Authenticated Copy</div>
-                </div>
-                <div className="font-mono font-bold text-slate-700">
-                  Page {currentPage} of 148
-                </div>
+              {/* HIGHLIGHTED EVIDENCE */}
+
+              <div className="border-l-4 border-amber-500 bg-amber-50 p-4 text-sm italic leading-7">
+                {selectedFinding.quotedText}
+              </div>
+
+              {/* WARNING */}
+
+              <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 font-sans text-xs text-red-700">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+
+                <span>
+                  This page is an evidence representation
+                  for the selected finding. Review the
+                  original DPR before final statutory
+                  decisions.
+                </span>
+              </div>
+
+              {/* FOOTER */}
+
+              <div className="border-t border-slate-300 pt-4 text-center font-mono text-[10px] text-slate-400">
+                END OF EVIDENCE VIEW
               </div>
             </div>
           </div>
@@ -490,3 +614,5 @@ export const EvidenceViewerPage: React.FC = () => {
     </div>
   );
 };
+
+export default EvidenceViewerPage;

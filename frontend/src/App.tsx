@@ -1,9 +1,11 @@
 import React from "react";
+
 import {
   BrowserRouter,
   Navigate,
   Route,
   Routes,
+  Outlet,
 } from "react-router-dom";
 
 import { GoogleOAuthProvider } from "@react-oauth/google";
@@ -19,13 +21,13 @@ import { RegisterPage } from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
-// Main pages
+// Main
 import { DashboardPage } from "./pages/DashboardPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 
-// DPR pages
+// DPR
 import { ContradictionsPage } from "./pages/ContradictionsPage";
 import { DprAnalysisPage } from "./pages/DprAnalysisPage";
 import { DprCopilotPage } from "./pages/DprCopilotPage";
@@ -36,26 +38,27 @@ import { UploadDprPage } from "./pages/UploadDprPage";
 import { WhatIfSimulatorPage } from "./pages/WhatIfSimulatorPage";
 
 
-/* =========================================================
-   AUTHENTICATION CHECK
-========================================================= */
+/* ============================================================
+   AUTH
+============================================================ */
 
 function isAuthenticated(): boolean {
+  const token =
+    localStorage.getItem("access_token");
+
   return Boolean(
-    localStorage.getItem("access_token")
+    token &&
+    token.trim() !== ""
   );
 }
 
 
-/* =========================================================
+/* ============================================================
    PROTECTED ROUTE
-========================================================= */
+============================================================ */
 
-function ProtectedRoute({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function ProtectedRoute() {
+
   if (!isAuthenticated()) {
     return (
       <Navigate
@@ -65,27 +68,29 @@ function ProtectedRoute({
     );
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 }
 
 
-/* =========================================================
-   GOOGLE CLIENT ID
-========================================================= */
+/* ============================================================
+   GOOGLE
+============================================================ */
 
 const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 
-/* =========================================================
+/* ============================================================
    APP
-========================================================= */
+============================================================ */
 
 function App() {
+
   return (
     <GoogleOAuthProvider
       clientId={GOOGLE_CLIENT_ID}
     >
+
       <BrowserRouter>
 
         <ThemeProvider>
@@ -94,9 +99,9 @@ function App() {
 
             <Routes>
 
-              {/* =================================================
-                  PUBLIC AUTHENTICATION ROUTES
-              ================================================= */}
+              {/* ==================================================
+                  PUBLIC
+              ================================================== */}
 
               <Route
                 path="/login"
@@ -119,92 +124,121 @@ function App() {
               />
 
 
-              {/* =================================================
-                  PROTECTED APPLICATION ROUTES
-              ================================================= */}
+              {/* ==================================================
+                  PROTECTED
+              ================================================== */}
 
               <Route
-                element={
-                  <ProtectedRoute>
-                    <AppShell />
-                  </ProtectedRoute>
-                }
+                element={<ProtectedRoute />}
               >
 
-                {/* Dashboard */}
-
                 <Route
-                  path="/dashboard"
-                  element={<DashboardPage />}
-                />
+                  element={<AppShell />}
+                >
+
+                  {/* Dashboard */}
+
+                  <Route
+                    path="/dashboard"
+                    element={<DashboardPage />}
+                  />
 
 
-                {/* DPR */}
+                  {/* DPR Analysis */}
 
-                <Route
-                  path="/dpr-analysis"
-                  element={<DprAnalysisPage />}
-                />
-
-                <Route
-                  path="/dpr-copilot"
-                  element={<DprCopilotPage />}
-                />
-
-                <Route
-                  path="/contradictions"
-                  element={<ContradictionsPage />}
-                />
-
-                <Route
-                  path="/evidence"
-                  element={<EvidenceViewerPage />}
-                />
-
-                <Route
-                  path="/risk-intelligence"
-                  element={<RiskIntelligencePage />}
-                />
-
-                <Route
-                  path="/mitigation-advisor"
-                  element={<MitigationAdvisorPage />}
-                />
-
-                <Route
-                  path="/upload-dpr"
-                  element={<UploadDprPage />}
-                />
-
-                <Route
-                  path="/what-if"
-                  element={<WhatIfSimulatorPage />}
-                />
+                  <Route
+                    path="/dpr-analysis"
+                    element={<DprAnalysisPage />}
+                  />
 
 
-                {/* Other */}
+                  {/* Copilot */}
 
-                <Route
-                  path="/reports"
-                  element={<ReportsPage />}
-                />
+                  <Route
+                    path="/dpr-copilot"
+                    element={<DprCopilotPage />}
+                  />
 
-                <Route
-                  path="/profile"
-                  element={<ProfilePage />}
-                />
 
-                <Route
-                  path="/settings"
-                  element={<SettingsPage />}
-                />
+                  {/* Contradictions */}
+
+                  <Route
+                    path="/contradictions"
+                    element={<ContradictionsPage />}
+                  />
+
+
+                  {/* Evidence */}
+
+                  <Route
+                    path="/evidence-viewer"
+                    element={<EvidenceViewerPage />}
+                  />
+
+
+                  {/* Risk */}
+
+                  <Route
+                    path="/risk-intelligence"
+                    element={<RiskIntelligencePage />}
+                  />
+
+
+                  {/* Mitigation */}
+
+                  <Route
+                    path="/mitigation-advisor"
+                    element={<MitigationAdvisorPage />}
+                  />
+
+
+                  {/* Upload */}
+
+                  <Route
+                    path="/upload-dpr"
+                    element={<UploadDprPage />}
+                  />
+
+
+                  {/* What If */}
+
+                  <Route
+                    path="/what-if-simulator"
+                    element={<WhatIfSimulatorPage />}
+                  />
+
+
+                  {/* Reports */}
+
+                  <Route
+                    path="/reports"
+                    element={<ReportsPage />}
+                  />
+
+
+                  {/* Profile */}
+
+                  <Route
+                    path="/profile"
+                    element={<ProfilePage />}
+                  />
+
+
+                  {/* Settings */}
+
+                  <Route
+                    path="/settings"
+                    element={<SettingsPage />}
+                  />
+
+                </Route>
 
               </Route>
 
 
-              {/* =================================================
+              {/* ==================================================
                   ROOT
-              ================================================= */}
+              ================================================== */}
 
               <Route
                 path="/"
@@ -221,9 +255,9 @@ function App() {
               />
 
 
-              {/* =================================================
-                  FALLBACK
-              ================================================= */}
+              {/* ==================================================
+                  UNKNOWN
+              ================================================== */}
 
               <Route
                 path="*"
@@ -246,9 +280,9 @@ function App() {
         </ThemeProvider>
 
       </BrowserRouter>
+
     </GoogleOAuthProvider>
   );
 }
-
 
 export default App;

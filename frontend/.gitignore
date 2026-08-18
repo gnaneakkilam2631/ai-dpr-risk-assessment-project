@@ -31,3 +31,17 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+.venv/
+
+# Uploaded/generated files
+backend/uploads/
+
+# Environment variables
+.env

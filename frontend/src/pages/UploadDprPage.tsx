@@ -1,499 +1,1258 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  UploadCloud,
-  FileCheck,
-  CheckCircle2,
-  AlertCircle,
+  Upload,
   FileText,
-  Cpu,
-  Layers,
-  Search,
-  Sparkles,
+  CheckCircle,
+  AlertTriangle,
+  Loader2,
   ArrowRight,
-  ShieldCheck,
-  Clock,
-  Settings,
-} from 'lucide-react';
-import { useProject } from '../context/ProjectContext';
-import { Project } from '../types';
+} from "lucide-react";
 
-const PROCESSING_STAGES = [
-  { id: 1, name: 'Reading document & extracting OCR text', detail: 'Parsing 148 pages, engineering drawings, and metadata tables...' },
-  { id: 2, name: 'Extracting project information & BoQ rates', detail: 'Identifying chainages, rate abstracts, and financial tables...' },
-  { id: 3, name: 'Building project knowledge graph', detail: 'Cross-referencing narrative statements against priced schedules...' },
-  { id: 4, name: 'Checking DPR completeness & IRC compliance', detail: 'Validating against MoRTH 2024 & NEC appraisal standard checklists...' },
-  { id: 5, name: 'Detecting contradictions & discrepancies', detail: 'Evaluating cost totals, environmental hectare claims, and timelines...' },
-  { id: 6, name: 'Running multi-dimensional risk models', detail: 'Simulating weather exposure, geotechnical instability, and cost sensitivity...' },
-  { id: 7, name: 'Generating AI mitigation recommendations', detail: 'Formulating actionable countermeasures with expected impact...' },
-  { id: 8, name: 'Preparing comprehensive report & evidence links', detail: 'Synthesizing health score 82/100 and final appraisal dossier...' },
-];
+const API_URL = "http://127.0.0.1:8000";
+
+type Project = {
+  id: number;
+  name: string;
+  description?: string;
+};
+
+type BackendProject = {
+  id?: number;
+  name?: string;
+  description?: string;
+};
+
+type UploadResponse = {
+  id?: number;
+  document_id?: number;
+  filename?: string;
+  project_id?: number;
+  document?: {
+    id?: number;
+    filename?: string;
+    project_id?: number;
+  };
+  detail?: string;
+  message?: string;
+};
+
+type RiskAnalysisResponse = {
+  score?: number;
+  overall_level?: string;
+  risk_count?: number;
+  risks?: unknown[];
+  detail?: string;
+};
+
+type UploadAnalysis = {
+  documentId: number;
+  score: number;
+  overall_level: string;
+  risk_count: number;
+};
+
+function getStoredUserId(): number | null {
+  const directUserId = localStorage.getItem("user_id");
+
+  if (directUserId) {
+    const parsed = Number(directUserId);
+
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  const storedUser = localStorage.getItem("user");
+
+  if (storedUser) {
+    try {
+      const parsedUser = JSON.parse(storedUser);
+
+      const possibleUserId = Number(
+        parsedUser?.id ??
+          parsedUser?.user_id ??
+          parsedUser?.userId
+      );
+
+      if (
+        Number.isFinite(possibleUserId) &&
+        possibleUserId > 0
+      ) {
+        return possibleUserId;
+      }
+    } catch {
+      // Ignore invalid JSON.
+    }
+  }
+
+  return null;
+}
+
+async function readResponseSafely(
+  response: Response
+): Promise<Record<string, unknown>> {
+  const contentType =
+    response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    try {
+      const data = await response.json();
+
+      if (
+        data &&
+        typeof data === "object"
+      ) {
+        return data as Record<string, unknown>;
+      }
+
+      return {};
+    } catch {
+      return {};
+    }
+  }
+
+  try {
+    const text = await response.text();
+
+    return {
+      detail: text,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function getBackendError(
+  data: Record<string, unknown>,
+  fallback: string
+): string {
+  const detail = data.detail;
+
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (
+          item &&
+          typeof item === "object" &&
+          "msg" in item
+        ) {
+          return String(
+            (item as { msg?: unknown }).msg
+          );
+        }
+
+        return String(item);
+      })
+      .join(", ");
+  }
+
+  const message = data.message;
+
+  if (
+    typeof message === "string" &&
+    message.trim()
+  ) {
+    return message;
+  }
+
+  return fallback;
+}
 
 export const UploadDprPage: React.FC = () => {
-  const { addNewUploadedProject, addToast } = useProject();
   const navigate = useNavigate();
 
-  const [uploadedFile, setUploadedFile] = useState<{
-    name: string;
-    size: string;
-    pages: number;
-    type: string;
-    projectName: string;
-    state: string;
-    cost: number;
-  } | null>(null);
+  const [projects, setProjects] =
+    useState<Project[]>([]);
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [config, setConfig] = useState({
-    quality: true,
-    risk: true,
-    contradiction: true,
-    compliance: true,
-    financial: true,
-    schedule: true,
-  });
+  const [selectedProject, setSelectedProject] =
+    useState<number | null>(null);
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [currentStageIndex, setCurrentStageIndex] = useState(0);
-  const [progressPct, setProgressPct] = useState(0);
-  const [telemetryLogs, setTelemetryLogs] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null);
 
-  // Simulation timer for 8 stages
-  useEffect(() => {
-    let interval: any;
-    if (isProcessing) {
-      interval = setInterval(() => {
-        setProgressPct((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          const next = prev + 2;
-          const stageIndex = Math.min(
-            PROCESSING_STAGES.length - 1,
-            Math.floor((next / 100) * PROCESSING_STAGES.length)
+  const [uploading, setUploading] =
+    useState(false);
+
+  const [analyzing, setAnalyzing] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
+  const [analysis, setAnalysis] =
+    useState<UploadAnalysis | null>(null);
+
+  // =========================================================
+  // LOAD PROJECTS
+  // =========================================================
+
+  const loadProjects = useCallback(
+    async (): Promise<void> => {
+      setError("");
+
+      const userId =
+        getStoredUserId();
+
+      console.log(
+        "Upload DPR - user_id:",
+        userId
+      );
+
+      if (userId === null) {
+        setError(
+          "User ID was not found. Please login again."
+        );
+        return;
+      }
+
+      try {
+        const response =
+          await fetch(
+            `${API_URL}/projects/?user_id=${encodeURIComponent(
+              String(userId)
+            )}`,
+            {
+              method: "GET",
+              headers: {
+                Accept:
+                  "application/json",
+              },
+            }
           );
-          setCurrentStageIndex(stageIndex);
 
-          if (next % 14 === 0) {
-            const currentStage = PROCESSING_STAGES[stageIndex];
-            setTelemetryLogs((logs) => [
-              `[${new Date().toLocaleTimeString()}] Stage ${stageIndex + 1}: ${currentStage.name}`,
-              ...logs.slice(0, 5),
-            ]);
+        const data =
+          await readResponseSafely(
+            response
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            getBackendError(
+              data,
+              `Failed to load projects (${response.status}).`
+            )
+          );
+        }
+
+        const rawProjects =
+          Array.isArray(data)
+            ? data
+            : [];
+
+        const normalizedProjects: Project[] =
+          rawProjects.map(
+            (
+              project: BackendProject
+            ): Project => ({
+              id:
+                Number(
+                  project.id
+                ) || 0,
+
+              name:
+                project.name ||
+                "Unnamed Project",
+
+              description:
+                project.description ||
+                "",
+            })
+          );
+
+        console.log(
+          "Upload DPR - projects:",
+          normalizedProjects
+        );
+
+        setProjects(
+          normalizedProjects
+        );
+
+        const savedProjectId =
+          localStorage.getItem(
+            "active_project_id"
+          );
+
+        if (savedProjectId) {
+          const savedId =
+            Number(
+              savedProjectId
+            );
+
+          const savedProject =
+            normalizedProjects.find(
+              (
+                project: Project
+              ) =>
+                project.id ===
+                savedId
+            );
+
+          if (savedProject) {
+            setSelectedProject(
+              savedProject.id
+            );
+
+            return;
           }
+        }
 
-          return next;
-        });
-      }, 90);
-    }
-    return () => clearInterval(interval);
-  }, [isProcessing]);
+        if (
+          normalizedProjects.length >
+          0
+        ) {
+          const firstProject =
+            normalizedProjects[0];
 
-  // Navigate when processing hits 100%
+          setSelectedProject(
+            firstProject.id
+          );
+
+          localStorage.setItem(
+            "active_project_id",
+            String(
+              firstProject.id
+            )
+          );
+        } else {
+          setSelectedProject(
+            null
+          );
+
+          localStorage.removeItem(
+            "active_project_id"
+          );
+        }
+      } catch (err) {
+        console.error(
+          "LOAD PROJECTS ERROR:",
+          err
+        );
+
+        setProjects([]);
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not load projects."
+        );
+      }
+    },
+    []
+  );
+
+  // =========================================================
+  // LOAD PROJECTS ON PAGE OPEN
+  // =========================================================
+
   useEffect(() => {
-    if (progressPct >= 100 && isProcessing) {
-      setTimeout(() => {
-        setIsProcessing(false);
-        const newProj: Project = {
-          id: 'proj-' + Date.now(),
-          name: uploadedFile?.projectName || 'Rural Connectivity Improvement Project (Phase IV)',
-          code: 'DPR-NER-2025-084',
-          location: 'Papum Pare & Lower Subansiri Districts',
-          state: uploadedFile?.state || 'Arunachal Pradesh',
-          sector: 'Roads & Highways',
-          implementingAgency: 'Public Works Department (Highway Division)',
-          totalCostCr: uploadedFile?.cost || 124.6,
-          approvedBudgetCr: 110.0,
-          durationMonths: 24,
-          startDate: '2025-10-01',
-          expectedCompletion: '2027-09-30',
-          beneficiariesCount: 84500,
-          healthScore: 82,
-          overallRisk: 'high',
-          costRiskPct: 73,
-          scheduleRiskPct: 81,
-          lastAnalyzed: 'Just now',
-          status: 'Flagged Issues',
-          dprFile: {
-            name: uploadedFile?.name || 'DPR_Arunachal_Rural_Connect_v2.4_Final.pdf',
-            sizeMb: 18.4,
-            pages: uploadedFile?.pages || 148,
-            uploadedAt: 'Just now',
-            version: 'v2.4-Rev3',
-          },
-        };
-        addNewUploadedProject(newProj);
-        navigate('/dpr-analysis');
-      }, 800);
-    }
-  }, [progressPct, isProcessing]);
+    void loadProjects();
+  }, [loadProjects]);
 
-  const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setUploadedFile({
-        name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        pages: 148,
-        type: file.name.endsWith('.docx') ? 'DOCX' : 'PDF',
-        projectName: 'Rural Connectivity Improvement Project (Phase IV)',
-        state: 'Arunachal Pradesh',
-        cost: 124.6,
-      });
-      addToast('success', 'Document Uploaded', `${file.name} ready for analysis.`);
-    }
-  };
+  // =========================================================
+  // SELECT PROJECT
+  // =========================================================
 
-  const handleSelectSample = (sampleType: 'arunachal' | 'assam' | 'sikkim') => {
-    if (sampleType === 'arunachal') {
-      setUploadedFile({
-        name: 'DPR_Arunachal_Rural_Connect_v2.4_Final.pdf',
-        size: '18.4 MB',
-        pages: 148,
-        type: 'PDF',
-        projectName: 'Rural Connectivity Improvement Project (Phase IV)',
-        state: 'Arunachal Pradesh',
-        cost: 124.6,
-      });
-    } else if (sampleType === 'assam') {
-      setUploadedFile({
-        name: 'Assam_PHED_WaterSupply_Cluster7_DPR.pdf',
-        size: '14.2 MB',
-        pages: 116,
-        type: 'PDF',
-        projectName: 'Integrated Jal Jeevan Water Supply Project',
-        state: 'Assam',
-        cost: 88.4,
-      });
-    } else {
-      setUploadedFile({
-        name: 'Sikkim_HighAltitude_Corridor_DPR.pdf',
-        size: '36.8 MB',
-        pages: 290,
-        type: 'PDF',
-        projectName: 'High-Altitude Mountain Bypass & Tunnel Corridor',
-        state: 'Sikkim',
-        cost: 342.8,
-      });
-    }
-    addToast('info', 'Sample DPR Selected', 'Preloaded official infrastructure DPR template.');
-  };
+  function handleProjectChange(
+    event: React.ChangeEvent<HTMLSelectElement>
+  ): void {
+    const value =
+      event.target.value;
 
-  const startAnalysis = () => {
-    if (!uploadedFile) {
-      addToast('warning', 'No File Selected', 'Please upload or select a DPR file first.');
+    if (!value) {
+      setSelectedProject(
+        null
+      );
+
+      localStorage.removeItem(
+        "active_project_id"
+      );
+
       return;
     }
-    setIsProcessing(true);
-    setProgressPct(0);
-    setCurrentStageIndex(0);
-    setTelemetryLogs([`[${new Date().toLocaleTimeString()}] Initiating AI-DPR Guardian Pipeline...`]);
-  };
+
+    const projectId =
+      Number(value);
+
+    if (
+      !Number.isFinite(
+        projectId
+      ) ||
+      projectId <= 0
+    ) {
+      setSelectedProject(
+        null
+      );
+
+      return;
+    }
+
+    setSelectedProject(
+      projectId
+    );
+
+    localStorage.setItem(
+      "active_project_id",
+      String(projectId)
+    );
+
+    setSelectedFile(
+      null
+    );
+
+    setMessage("");
+
+    setError("");
+
+    setAnalysis(
+      null
+    );
+  }
+
+  // =========================================================
+  // FILE SELECT
+  // =========================================================
+
+  function handleFileChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ): void {
+    const file =
+      event.target.files?.[0] ||
+      null;
+
+    setSelectedFile(
+      file
+    );
+
+    setMessage("");
+
+    setError("");
+
+    setAnalysis(
+      null
+    );
+  }
+
+  // =========================================================
+  // UPLOAD + ANALYZE
+  // =========================================================
+
+  async function uploadAndAnalyze(): Promise<void> {
+    setMessage("");
+
+    setError("");
+
+    setAnalysis(
+      null
+    );
+
+    // -------------------------------------------------------
+    // VALIDATE PROJECT
+    // -------------------------------------------------------
+
+    if (
+      selectedProject === null ||
+      selectedProject <= 0
+    ) {
+      setError(
+        "Please select a project."
+      );
+
+      return;
+    }
+
+    // -------------------------------------------------------
+    // VALIDATE FILE
+    // -------------------------------------------------------
+
+    if (!selectedFile) {
+      setError(
+        "Please select a DPR file."
+      );
+
+      return;
+    }
+
+    // -------------------------------------------------------
+    // VALIDATE EXTENSION
+    // -------------------------------------------------------
+
+    const extension =
+      selectedFile.name
+        .substring(
+          selectedFile.name.lastIndexOf(
+            "."
+          )
+        )
+        .toLowerCase();
+
+    const allowedExtensions =
+      [
+        ".pdf",
+        ".docx",
+        ".txt",
+      ];
+
+    if (
+      !allowedExtensions.includes(
+        extension
+      )
+    ) {
+      setError(
+        "Only PDF, DOCX and TXT files are supported."
+      );
+
+      return;
+    }
+
+    // -------------------------------------------------------
+    // VALIDATE FILE SIZE
+    // -------------------------------------------------------
+
+    if (
+      selectedFile.size <= 0
+    ) {
+      setError(
+        "The selected file is empty."
+      );
+
+      return;
+    }
+
+    // 50 MB safety limit.
+    const maxFileSize =
+      50 * 1024 * 1024;
+
+    if (
+      selectedFile.size >
+      maxFileSize
+    ) {
+      setError(
+        "File size must be less than 50 MB."
+      );
+
+      return;
+    }
+
+    // -------------------------------------------------------
+    // FORM DATA
+    // -------------------------------------------------------
+
+    const formData =
+      new FormData();
+
+    formData.append(
+      "file",
+      selectedFile,
+      selectedFile.name
+    );
+
+    console.log(
+      "===================================="
+    );
+
+    console.log(
+      "DPR UPLOAD START"
+    );
+
+    console.log(
+      "Project ID:",
+      selectedProject
+    );
+
+    console.log(
+      "File:",
+      selectedFile.name
+    );
+
+    console.log(
+      "Size:",
+      selectedFile.size
+    );
+
+    console.log(
+      "Type:",
+      selectedFile.type
+    );
+
+    console.log(
+      "===================================="
+    );
+
+    try {
+      // =====================================================
+      // STEP 1 — UPLOAD DPR
+      // =====================================================
+
+      setUploading(
+        true
+      );
+
+      setMessage(
+        "Uploading DPR document..."
+      );
+
+      const uploadUrl =
+        `${API_URL}/documents/upload?project_id=${encodeURIComponent(
+          String(selectedProject)
+        )}`;
+
+      console.log(
+        "UPLOAD URL:",
+        uploadUrl
+      );
+
+      const uploadResponse =
+        await fetch(
+          uploadUrl,
+          {
+            method: "POST",
+            body: formData,
+            headers: {
+              Accept:
+                "application/json",
+            },
+          }
+        );
+
+      const uploadData =
+        await readResponseSafely(
+          uploadResponse
+        );
+
+      console.log(
+        "UPLOAD STATUS:",
+        uploadResponse.status
+      );
+
+      console.log(
+        "UPLOAD RESPONSE:",
+        uploadData
+      );
+
+      if (
+        !uploadResponse.ok
+      ) {
+        throw new Error(
+          getBackendError(
+            uploadData,
+            `DPR upload failed (${uploadResponse.status}).`
+          )
+        );
+      }
+
+      // =====================================================
+      // GET DOCUMENT ID
+      // =====================================================
+
+      const documentId = Number(
+        uploadData.id ??
+          uploadData.document_id ??
+          (
+            uploadData.document as
+              | {
+                  id?: number;
+                }
+              | undefined
+          )?.id ??
+          0
+      );
+
+      if (
+        !Number.isFinite(
+          documentId
+        ) ||
+        documentId <= 0
+      ) {
+        throw new Error(
+          "DPR was uploaded but the backend did not return a valid document ID."
+        );
+      }
+
+      // =====================================================
+      // SAVE ACTIVE PROJECT
+      // =====================================================
+
+      localStorage.setItem(
+        "active_project_id",
+        String(
+          selectedProject
+        )
+      );
+
+      // =====================================================
+      // SAVE ACTIVE DOCUMENT
+      // =====================================================
+
+      localStorage.setItem(
+        "active_document_id",
+        String(
+          documentId
+        )
+      );
+
+      localStorage.setItem(
+        "active_document_name",
+        selectedFile.name
+      );
+
+      console.log(
+        "DOCUMENT ID:",
+        documentId
+      );
+
+      // =====================================================
+      // STEP 2 — ANALYZE
+      // =====================================================
+
+      setUploading(
+        false
+      );
+
+      setAnalyzing(
+        true
+      );
+
+      setMessage(
+        "DPR uploaded successfully. AI is analyzing the document..."
+      );
+
+      const riskUrl =
+        `${API_URL}/documents/${documentId}/risks`;
+
+      console.log(
+        "RISK URL:",
+        riskUrl
+      );
+
+      const riskResponse =
+        await fetch(
+          riskUrl,
+          {
+            method: "GET",
+            headers: {
+              Accept:
+                "application/json",
+            },
+          }
+        );
+
+      const riskDataRaw =
+        await readResponseSafely(
+          riskResponse
+        );
+
+      console.log(
+        "RISK STATUS:",
+        riskResponse.status
+      );
+
+      console.log(
+        "RISK RESPONSE:",
+        riskDataRaw
+      );
+
+      if (
+        !riskResponse.ok
+      ) {
+        throw new Error(
+          getBackendError(
+            riskDataRaw,
+            `Risk analysis failed (${riskResponse.status}).`
+          )
+        );
+      }
+
+      const riskData =
+        riskDataRaw as RiskAnalysisResponse;
+
+      const result: UploadAnalysis =
+        {
+          documentId,
+
+          score:
+            Number(
+              riskData.score ??
+                0
+            ),
+
+          overall_level:
+            String(
+              riskData.overall_level ??
+                "UNKNOWN"
+            ),
+
+          risk_count:
+            Number(
+              riskData.risk_count ??
+                (
+                  Array.isArray(
+                    riskData.risks
+                  )
+                    ? riskData
+                        .risks
+                        .length
+                    : 0
+                )
+            ),
+        };
+
+      setAnalysis(
+        result
+      );
+
+      // =====================================================
+      // SAVE COMPLETE RISK RESPONSE
+      // =====================================================
+
+      localStorage.setItem(
+        "active_risk_analysis",
+        JSON.stringify(
+          riskData
+        )
+      );
+
+      localStorage.setItem(
+        "latest_dpr_analysis",
+        JSON.stringify({
+          documentId,
+
+          filename:
+            selectedFile.name,
+
+          riskData,
+
+          analyzedAt:
+            new Date().toISOString(),
+        })
+      );
+
+      // =====================================================
+      // SUCCESS
+      // =====================================================
+
+      setMessage(
+        "DPR analysis completed successfully."
+      );
+
+      setError("");
+
+      console.log(
+        "===================================="
+      );
+
+      console.log(
+        "DPR UPLOAD + ANALYSIS SUCCESS"
+      );
+
+      console.log(
+        "Project ID:",
+        selectedProject
+      );
+
+      console.log(
+        "Document ID:",
+        documentId
+      );
+
+      console.log(
+        "Risk Score:",
+        result.score
+      );
+
+      console.log(
+        "Risk Level:",
+        result.overall_level
+      );
+
+      console.log(
+        "Risk Count:",
+        result.risk_count
+      );
+
+      console.log(
+        "===================================="
+      );
+    } catch (err) {
+      console.error(
+        "DPR UPLOAD/ANALYSIS ERROR:",
+        err
+      );
+
+      setMessage("");
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Upload or analysis failed."
+      );
+    } finally {
+      setUploading(
+        false
+      );
+
+      setAnalyzing(
+        false
+      );
+    }
+  }
+
+  // =========================================================
+  // OPEN DPR ANALYSIS
+  // =========================================================
+
+  function openAnalysis(): void {
+    navigate(
+      "/dpr-analysis"
+    );
+  }
+
+  // =========================================================
+  // RENDER
+  // =========================================================
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* HEADER */}
+    <div className="space-y-6">
+
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white font-display">
-          Analyze a New DPR
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-400">
+          DPR Intelligence
+        </p>
+
+        <h1 className="mt-1 text-3xl font-extrabold text-white">
+          Upload DPR
         </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Upload a Detailed Project Report and let AI evaluate quality, consistency, and project risk.
+
+        <p className="mt-2 text-sm text-slate-400">
+          Upload your Detailed Project Report.
+          The system will automatically analyze
+          the document and update the DPR Risk
+          Analysis page.
         </p>
       </div>
 
-      {/* SAMPLE QUICK PICKS */}
-      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3.5 dark:border-blue-950 dark:bg-blue-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-blue-900 dark:text-blue-200">
-          <Sparkles className="h-4 w-4 text-blue-600 dark:text-cyan-400" />
-          <span>Quick Evaluation Samples (Indian Infrastructure DPRs):</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => handleSelectSample('arunachal')}
-            className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-xs hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 cursor-pointer"
-          >
-            Arunachal Road DPR (₹124.6 Cr)
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSelectSample('assam')}
-            className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-xs hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 cursor-pointer"
-          >
-            Assam Water DPR (₹88.4 Cr)
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSelectSample('sikkim')}
-            className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-xs hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 cursor-pointer"
-          >
-            Sikkim Tunnel DPR (₹342.8 Cr)
-          </button>
-        </div>
-      </div>
+      {/* =====================================================
+          UPLOAD CARD
+      ===================================================== */}
 
-      {!isProcessing ? (
-        <div className="space-y-6">
-          {/* DRAG & DROP ZONE */}
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleFileDrop}
-            className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 sm:p-12 text-center transition-all ${
-              isDragging
-                ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20'
-                : 'border-slate-300 bg-white hover:border-slate-400 dark:border-slate-700 dark:bg-[#0c1427] dark:hover:border-slate-600'
-            }`}
+      <div className="rounded-2xl border border-slate-800 bg-[#0b1220] p-6">
+
+        {/* PROJECT */}
+
+        <div>
+          <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+            Select Project
+          </label>
+
+          <select
+            value={
+              selectedProject ??
+              ""
+            }
+            onChange={
+              handleProjectChange
+            }
+            disabled={
+              uploading ||
+              analyzing
+            }
+            className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <input
-              type="file"
-              id="file-upload"
-              accept=".pdf,.docx"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  const file = e.target.files[0];
-                  setUploadedFile({
-                    name: file.name,
-                    size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-                    pages: 148,
-                    type: file.name.endsWith('.docx') ? 'DOCX' : 'PDF',
-                    projectName: 'Rural Connectivity Improvement Project (Phase IV)',
-                    state: 'Arunachal Pradesh',
-                    cost: 124.6,
-                  });
-                  addToast('success', 'File Selected', `${file.name}`);
+            <option value="">
+              Select project
+            </option>
+
+            {projects.map(
+              (
+                project: Project
+              ) => (
+                <option
+                  key={
+                    project.id
+                  }
+                  value={
+                    project.id
+                  }
+                >
+                  {
+                    project.name
+                  }
+                </option>
+              )
+            )}
+          </select>
+
+          {selectedProject !==
+            null && (
+            <div className="mt-3 rounded-xl bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
+              Selected:{" "}
+              <span className="font-bold text-white">
+                {
+                  projects.find(
+                    (
+                      project: Project
+                    ) =>
+                      project.id ===
+                      selectedProject
+                  )?.name ??
+                  "Selected Project"
                 }
-              }}
-            />
-
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-cyan-400 mb-4 shadow-inner">
-              <UploadCloud className="h-8 w-8" />
-            </div>
-
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Drag & drop your DPR here
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              or{' '}
-              <label
-                htmlFor="file-upload"
-                className="font-semibold text-blue-600 dark:text-cyan-400 hover:underline cursor-pointer"
-              >
-                browse files
-              </label>{' '}
-              from your system
-            </p>
-
-            <div className="mt-4 flex items-center gap-3 text-[11px] font-medium text-slate-400">
-              <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono">
-                PDF / DOCX formats supported
               </span>
-              <span>•</span>
-              <span>Max file size: 150 MB (Up to 500 pages)</span>
-            </div>
-          </div>
-
-          {/* UPLOADED FILE CARD */}
-          {uploadedFile && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-[#0c1427]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 font-mono font-bold text-xs">
-                    {uploadedFile.type}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                      {uploadedFile.name}
-                    </h3>
-                    <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
-                      <span>{uploadedFile.size}</span>
-                      <span>•</span>
-                      <span>{uploadedFile.pages} Pages Indexed</span>
-                      <span>•</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Ready for Analysis
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
-                    Scope: ₹{uploadedFile.cost} Cr ({uploadedFile.state})
-                  </span>
-                </div>
-              </div>
             </div>
           )}
+        </div>
 
-          {/* ANALYSIS CONFIGURATION CHECKBOXES */}
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#0c1427]">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
-              <Settings className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              AI Intelligence Configuration Modules
-            </h3>
+        {/* DPR FILE */}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {[
-                { id: 'quality', label: 'Quality Assessment', desc: 'MoRTH / CPWD conformance' },
-                { id: 'risk', label: 'Risk Prediction', desc: 'Probability & cost exposure' },
-                { id: 'contradiction', label: 'Contradiction Detection', desc: 'Cross-chapter reconciliation' },
-                { id: 'compliance', label: 'Compliance Analysis', desc: 'Forest, EIA & Land clearances' },
-                { id: 'financial', label: 'Financial & BoQ Analysis', desc: 'Rate abstract & contingency' },
-                { id: 'schedule', label: 'Schedule Feasibility', desc: 'Monsoon clash & Gantt audit' },
-              ].map((item) => (
-                <label
-                  key={item.id}
-                  className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition ${
-                    config[item.id as keyof typeof config]
-                      ? 'border-blue-300 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30'
-                      : 'border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={config[item.id as keyof typeof config]}
-                    onChange={(e) =>
-                      setConfig({ ...config, [item.id]: e.target.checked })
-                    }
-                    className="mt-0.5 h-4 w-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
-                  />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">
-                      {item.label}
-                    </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      {item.desc}
-                    </div>
-                  </div>
-                </label>
-              ))}
+        <div className="mt-6">
+
+          <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+            DPR Document
+          </label>
+
+          <label
+            className={`flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-slate-700 bg-slate-900/70 px-5 py-6 transition hover:border-cyan-400 ${
+              uploading ||
+              analyzing
+                ? "pointer-events-none opacity-60"
+                : ""
+            }`}
+          >
+
+            <Upload className="h-8 w-8 shrink-0 text-cyan-400" />
+
+            <div className="flex-1">
+
+              <p className="text-sm font-semibold text-white">
+                {selectedFile
+                  ? selectedFile.name
+                  : "Choose DPR document"}
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                PDF, DOCX or TXT
+              </p>
+
+              {selectedFile && (
+                <p className="mt-2 text-xs text-slate-500">
+                  {(
+                    selectedFile.size /
+                    (1024 * 1024)
+                  ).toFixed(
+                    2
+                  )}{" "}
+                  MB
+                </p>
+              )}
+
             </div>
-          </div>
 
-          {/* START BUTTON */}
-          <div className="flex items-center justify-end">
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt"
+              onChange={
+                handleFileChange
+              }
+              disabled={
+                uploading ||
+                analyzing
+              }
+              className="hidden"
+            />
+
+          </label>
+        </div>
+
+        {/* =================================================
+            UPLOAD BUTTON
+        ================================================= */}
+
+        <button
+          type="button"
+          onClick={
+            uploadAndAnalyze
+          }
+          disabled={
+            uploading ||
+            analyzing ||
+            selectedProject ===
+              null ||
+            selectedFile ===
+              null
+          }
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+
+          {uploading ||
+          analyzing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+
+              {uploading
+                ? "Uploading..."
+                : "Analyzing DPR..."}
+            </>
+          ) : (
+            <>
+              <FileText className="h-4 w-4" />
+
+              Upload & Analyze DPR
+            </>
+          )}
+
+        </button>
+
+        {/* =================================================
+            SUCCESS
+        ================================================= */}
+
+        {message && (
+          <div className="mt-5 flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+
+            <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
+
+            <p className="text-sm text-emerald-300">
+              {message}
+            </p>
+
+          </div>
+        )}
+
+        {/* =================================================
+            ERROR
+        ================================================= */}
+
+        {error && (
+          <div className="mt-5 flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+
+            <div>
+              <p className="text-sm font-bold text-red-300">
+                Upload Error
+              </p>
+
+              <p className="mt-1 text-sm text-red-300/90">
+                {error}
+              </p>
+            </div>
+
+          </div>
+        )}
+
+      </div>
+
+      {/* =====================================================
+          ANALYSIS RESULT
+      ===================================================== */}
+
+      {analysis && (
+        <div className="rounded-2xl border border-cyan-500/20 bg-[#0b1220] p-6">
+
+          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
+
+            <div>
+
+              <p className="text-xs font-bold uppercase tracking-wider text-cyan-400">
+                Analysis Completed
+              </p>
+
+              <h2 className="mt-1 text-xl font-bold text-white">
+                DPR Risk Assessment Ready
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                The uploaded DPR is now connected
+                to the DPR Risk Analysis page.
+              </p>
+
+            </div>
+
             <button
-              onClick={startAnalysis}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 hover:from-blue-700 hover:to-cyan-700 transition cursor-pointer"
+              type="button"
+              onClick={
+                openAnalysis
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-cyan-400"
             >
-              <Cpu className="h-4 w-4" />
-              Start AI Analysis
+              Open Risk Analysis
+
               <ArrowRight className="h-4 w-4" />
             </button>
+
           </div>
-        </div>
-      ) : (
-        /* PROCESSING PROGRESS SCREEN (8 STAGES) */
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xl dark:border-slate-800 dark:bg-[#0c1427] space-y-6">
-          {/* HEADER & OVERALL PROGRESS BAR */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-                  AI Appraisal Engine Running
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+
+            {/* SCORE */}
+
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+
+              <p className="text-xs text-slate-500">
+                Risk Score
+              </p>
+
+              <p className="mt-2 text-3xl font-extrabold text-white">
+                {analysis.score}
+
+                <span className="text-sm text-slate-500">
+                  /100
                 </span>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                  Evaluating {uploadedFile?.name}
-                </h3>
-              </div>
-              <span className="text-3xl font-extrabold text-blue-600 dark:text-cyan-400 font-mono">
-                {progressPct}%
-              </span>
+              </p>
+
             </div>
 
-            <div className="w-full bg-slate-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden p-0.5">
-              <div
-                className="bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 h-full rounded-full transition-all duration-200"
-                style={{ width: `${progressPct}%` }}
-              />
+            {/* LEVEL */}
+
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+
+              <p className="text-xs text-slate-500">
+                Overall Risk
+              </p>
+
+              <p className="mt-2 text-2xl font-extrabold text-red-400">
+                {
+                  analysis.overall_level
+                }
+              </p>
+
             </div>
-          </div>
 
-          {/* 8 STAGES PROGRESS TRACKER */}
-          <div className="space-y-3 pt-2">
-            {PROCESSING_STAGES.map((stage, idx) => {
-              const isCompleted = idx < currentStageIndex;
-              const isCurrent = idx === currentStageIndex;
+            {/* COUNT */}
 
-              return (
-                <div
-                  key={stage.id}
-                  className={`flex items-start gap-3.5 rounded-xl p-3 transition-colors ${
-                    isCurrent
-                      ? 'bg-blue-50 border border-blue-200 dark:bg-blue-950/60 dark:border-blue-900'
-                      : isCompleted
-                      ? 'text-slate-700 dark:text-slate-300'
-                      : 'text-slate-400 opacity-60'
-                  }`}
-                >
-                  <div className="mt-0.5 shrink-0">
-                    {isCompleted ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                    ) : isCurrent ? (
-                      <div className="h-5 w-5 rounded-full border-2 border-blue-600 border-t-transparent animate-spin dark:border-cyan-400" />
-                    ) : (
-                      <div className="h-5 w-5 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center text-[10px] font-mono">
-                        {stage.id}
-                      </div>
-                    )}
-                  </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs font-bold ${
-                          isCurrent
-                            ? 'text-blue-900 dark:text-cyan-200'
-                            : isCompleted
-                            ? 'text-slate-900 dark:text-white'
-                            : 'text-slate-500'
-                        }`}
-                      >
-                        {stage.id}. {stage.name}
-                      </span>
-                      {isCurrent && (
-                        <span className="text-[10px] font-bold text-blue-600 dark:text-cyan-400 animate-pulse uppercase">
-                          Processing
-                        </span>
-                      )}
-                      {isCompleted && (
-                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                          Complete
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      {stage.detail}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+              <p className="text-xs text-slate-500">
+                Risks Detected
+              </p>
 
-          {/* TELEMETRY CONSOLE LOGS */}
-          <div className="rounded-xl bg-slate-950 p-4 text-emerald-400 font-mono text-[11px] space-y-1 shadow-inner border border-slate-800">
-            <div className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-1 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-              Live Knowledge Graph Stream
+              <p className="mt-2 text-3xl font-extrabold text-amber-400">
+                {
+                  analysis.risk_count
+                }
+              </p>
+
             </div>
-            {telemetryLogs.map((log, i) => (
-              <div key={i} className="leading-relaxed opacity-90 truncate">
-                {log}
-              </div>
-            ))}
+
           </div>
+
         </div>
       )}
+
     </div>
   );
 };
+
+export default UploadDprPage;
