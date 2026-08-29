@@ -4,45 +4,36 @@ import React, {
 } from "react";
 
 import {
-  Scale,
-  CheckCircle2,
   AlertCircle,
-  FileSearch,
-  Filter,
   Check,
+  CheckCircle2,
+  Filter,
   RotateCcw,
+  Scale,
   Sparkles,
 } from "lucide-react";
 
-import { useNavigate } from "react-router-dom";
-
 import {
+  useProject,
+} from "../context/useProject";
+
+import type {
   Contradiction,
   RiskSeverity,
-  useProject,
-} from "../context/ProjectContext";
+} from "../context/ProjectContextBase";
 
-import { RiskBadge } from "../components/common/RiskBadge";
 
-export const ContradictionsPage: React.FC =
+export const ContradictionsPage:
+  React.FC =
   () => {
+
     const {
       contradictions,
+      riskAssessment,
       markContradictionReviewed,
-      setActiveEvidenceTarget,
     } =
       useProject();
 
-    const navigate =
-      useNavigate();
-
-    const [
-      categoryFilter,
-      setCategoryFilter,
-    ] =
-      useState<string>(
-        "ALL"
-      );
 
     const [
       severityFilter,
@@ -50,7 +41,10 @@ export const ContradictionsPage: React.FC =
     ] =
       useState<
         "ALL" | RiskSeverity
-      >("ALL");
+      >(
+        "ALL"
+      );
+
 
     const [
       statusFilter,
@@ -58,74 +52,38 @@ export const ContradictionsPage: React.FC =
     ] =
       useState<
         "ALL" |
-        "UNREVIEWED" |
-        "REVIEWED"
-      >("ALL");
+        "REVIEWED" |
+        "UNREVIEWED"
+      >(
+        "ALL"
+      );
 
-    const criticalCount =
-      contradictions.filter(
-        (
-          item: Contradiction
-        ) =>
-          item.severity ===
-          "critical"
-      ).length;
-
-    const highCount =
-      contradictions.filter(
-        (
-          item: Contradiction
-        ) =>
-          item.severity ===
-          "high"
-      ).length;
-
-    const mediumCount =
-      contradictions.filter(
-        (
-          item: Contradiction
-        ) =>
-          item.severity ===
-          "medium"
-      ).length;
-
-    const lowCount =
-      contradictions.filter(
-        (
-          item: Contradiction
-        ) =>
-          item.severity ===
-          "low"
-      ).length;
 
     const reviewedCount =
       contradictions.filter(
         (
-          item: Contradiction
+          item
         ) =>
           item.reviewed
       ).length;
 
-    const filteredContradictions =
+
+    const filtered =
       useMemo(
         () =>
           contradictions.filter(
             (
-              item: Contradiction
+              item
             ) => {
-              const matchesCategory =
-                categoryFilter ===
-                  "ALL" ||
-                item.category ===
-                  categoryFilter;
 
-              const matchesSeverity =
+              const severityMatches =
                 severityFilter ===
                   "ALL" ||
                 item.severity ===
                   severityFilter;
 
-              const matchesStatus =
+
+              const statusMatches =
                 statusFilter ===
                   "ALL"
                   ? true
@@ -134,174 +92,126 @@ export const ContradictionsPage: React.FC =
                   ? item.reviewed
                   : !item.reviewed;
 
+
               return (
-                matchesCategory &&
-                matchesSeverity &&
-                matchesStatus
+                severityMatches &&
+                statusMatches
               );
             }
           ),
         [
           contradictions,
-          categoryFilter,
           severityFilter,
           statusFilter,
         ]
       );
 
-    function handleOpenEvidence(
-      pageNumber: number,
-      section: string,
-      title: string
-    ) {
-      setActiveEvidenceTarget({
-        page: pageNumber,
-        section,
-        title,
-      });
-
-      navigate(
-        "/evidence"
-      );
-    }
 
     return (
       <div className="space-y-6">
-        {/* HEADER */}
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="flex items-center gap-2.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              <Scale className="h-7 w-7 text-amber-500" />
+        <div>
 
+          <div className="flex items-center gap-2">
+
+            <Scale className="h-7 w-7 text-amber-400" />
+
+            <h1 className="text-3xl font-extrabold text-white">
               Consistency & Contradiction Analysis
             </h1>
 
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Cross-chapter validation identifying conflicting costs, schedules, dimensions, and quantities.
-            </p>
           </div>
 
-          <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-            Audit Status:{" "}
-            <strong>
-              {reviewedCount} of{" "}
-              {
-                contradictions.length
-              }{" "}
-              Reviewed
-            </strong>
-          </span>
+
+          <p className="mt-2 text-sm text-slate-400">
+            Contradictions are kept separate from general
+            DPR risk findings.
+          </p>
+
         </div>
 
-        {/* COUNTERS */}
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            {
-              label:
-                "Critical",
-              value:
-                criticalCount,
-              className:
-                "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/20 dark:text-red-400",
-            },
-            {
-              label:
-                "High",
-              value:
-                highCount,
-              className:
-                "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/20 dark:text-orange-400",
-            },
-            {
-              label:
-                "Medium",
-              value:
-                mediumCount,
-              className:
-                "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-400",
-            },
-            {
-              label:
-                "Low",
-              value:
-                lowCount,
-              className:
-                "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-400",
-            },
-          ].map(
-            (
-              card
-            ) => (
-              <div
-                key={
-                  card.label
-                }
-                className={`rounded-xl border p-4 ${card.className}`}
-              >
-                <p className="text-xs font-bold uppercase tracking-wider">
-                  {
-                    card.label
-                  }
-                </p>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
 
-                <p className="mt-2 text-2xl font-extrabold">
-                  {
-                    card.value
-                  }
-                </p>
-              </div>
-            )
-          )}
-        </div>
-
-        {/* FILTERS */}
-
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-[#0c1427]">
-          <span className="mr-1 flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-500">
-            <Filter className="h-3.5 w-3.5" />
-            Filters
-          </span>
-
-          <select
+          <Card
+            label="Total Risks"
             value={
-              categoryFilter
+              riskAssessment.riskCount
             }
-            onChange={(
-              event
-            ) =>
-              setCategoryFilter(
-                event.target
-                  .value
+          />
+
+
+          <Card
+            label="Contradictions"
+            value={
+              contradictions.length
+            }
+          />
+
+
+          <Card
+            label="Reviewed"
+            value={
+              reviewedCount
+            }
+          />
+
+
+          <Card
+            label="Pending"
+            value={
+              Math.max(
+                0,
+                contradictions.length -
+                  reviewedCount
               )
             }
-            className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-          >
-            <option value="ALL">
-              All Categories
-            </option>
+          />
 
-            <option value="Financial">
-              Financial
-            </option>
+        </div>
 
-            <option value="Timeline">
-              Timeline
-            </option>
 
-            <option value="Material & Quantities">
-              Material & Quantities
-            </option>
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
 
-            <option value="Statutory Approvals">
-              Statutory Approvals
-            </option>
+          <div className="flex gap-3">
 
-            <option value="Beneficiaries">
-              Beneficiaries
-            </option>
-          </select>
+            <Sparkles className="h-5 w-5 text-cyan-400" />
+
+            <div>
+
+              <p className="text-sm font-bold text-cyan-300">
+                Risk count is not contradiction count
+              </p>
+
+              <p className="mt-1 text-xs text-slate-400">
+
+                This project currently has{" "}
+                <strong className="text-white">
+                  {
+                    riskAssessment.riskCount
+                  }
+                </strong>{" "}
+                identified risks and{" "}
+                <strong className="text-white">
+                  {
+                    contradictions.length
+                  }
+                </strong>{" "}
+                actual contradiction findings.
+
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-800 bg-[#0c1427] p-3">
+
+          <Filter className="h-4 w-4 text-slate-500" />
+
 
           <select
             value={
@@ -311,14 +221,14 @@ export const ContradictionsPage: React.FC =
               event
             ) =>
               setSeverityFilter(
-                event.target
-                  .value as
+                event.target.value as
                   | "ALL"
                   | RiskSeverity
               )
             }
-            className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white"
           >
+
             <option value="ALL">
               All Severities
             </option>
@@ -338,281 +248,269 @@ export const ContradictionsPage: React.FC =
             <option value="low">
               Low
             </option>
+
           </select>
 
-          <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-900">
-            {(
-              [
-                "ALL",
-                "UNREVIEWED",
-                "REVIEWED",
-              ] as const
-            ).map(
-              (
-                status
-              ) => (
-                <button
-                  type="button"
-                  key={
-                    status
-                  }
-                  onClick={() =>
-                    setStatusFilter(
-                      status
-                    )
-                  }
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
-                    statusFilter ===
-                    status
-                      ? "bg-white text-slate-900 shadow dark:bg-slate-800 dark:text-white"
-                      : "text-slate-500"
-                  }`}
-                >
-                  {status ===
-                  "ALL"
-                    ? `All (${contradictions.length})`
-                    : status ===
-                      "REVIEWED"
-                    ? `Reviewed (${reviewedCount})`
-                    : `Pending (${contradictions.length - reviewedCount})`}
-                </button>
+
+          <select
+            value={
+              statusFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setStatusFilter(
+                event.target.value as
+                  | "ALL"
+                  | "REVIEWED"
+                  | "UNREVIEWED"
               )
-            )}
-          </div>
+            }
+            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white"
+          >
+
+            <option value="ALL">
+              All Statuses
+            </option>
+
+            <option value="REVIEWED">
+              Reviewed
+            </option>
+
+            <option value="UNREVIEWED">
+              Pending
+            </option>
+
+          </select>
+
         </div>
 
-        {/* FINDINGS */}
 
-        <div className="space-y-4">
-          {filteredContradictions.map(
-            (
-              item: Contradiction
-            ) => (
-              <div
-                key={
-                  item.id
-                }
-                className={`rounded-2xl border p-5 ${
-                  item.reviewed
-                    ? "border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/20"
-                    : "border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#0c1427]"
-                }`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <RiskBadge
-                      severity={
-                        item.severity
-                      }
-                      size="sm"
-                      showPulse={
-                        item.severity ===
-                          "critical" &&
-                        !item.reviewed
-                      }
-                    />
+        {filtered.length ===
+        0 ? (
 
-                    <span className="rounded bg-slate-100 px-2 py-1 text-xs font-bold uppercase text-slate-500 dark:bg-slate-800">
+          <div className="rounded-2xl border border-dashed border-slate-700 p-12 text-center">
+
+            <Scale className="mx-auto h-10 w-10 text-slate-500" />
+
+            <p className="mt-3 text-lg font-bold text-white">
+              No contradictions detected
+            </p>
+
+            <p className="mt-2 text-sm text-slate-500">
+              General DPR risks are shown in DPR Analysis;
+              only actual consistency conflicts belong here.
+            </p>
+
+          </div>
+
+        ) : (
+
+          <div className="space-y-4">
+
+            {filtered.map(
+              (
+                item
+              ) => (
+
+                <div
+                  key={
+                    item.id
+                  }
+                  className="rounded-2xl border border-slate-800 bg-[#0c1427] p-5"
+                >
+
+                  <div className="flex items-center justify-between">
+
+                    <span className="text-xs font-bold uppercase text-amber-400">
                       {
-                        item.category
+                        item.severity
                       }
                     </span>
 
-                    {item.financialImpactCr !==
-                      undefined && (
-                      <span className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-bold text-rose-600 dark:border-rose-900 dark:bg-red-950/30 dark:text-rose-400">
-                        Variance: ₹
-                        {
-                          item.financialImpactCr
-                        }{" "}
-                        Cr
+
+                    {item.reviewed && (
+                      <span className="flex items-center gap-1 text-xs font-bold text-emerald-400">
+
+                        <CheckCircle2 className="h-4 w-4" />
+
+                        Reviewed
+
                       </span>
                     )}
+
                   </div>
 
-                  {item.reviewed && (
-                    <div className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-                      <CheckCircle2 className="h-4 w-4" />
 
-                      Reviewed
-                    </div>
-                  )}
-                </div>
+                  <h2 className="mt-3 font-bold text-white">
+                    {
+                      item.title
+                    }
+                  </h2>
 
-                <h2 className="mt-4 font-bold text-slate-900 dark:text-white">
-                  {
-                    item.title
-                  }
-                </h2>
 
-                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-bold text-blue-700 dark:text-blue-300">
-                        {
-                          item.sectionA
-                            .sectionNumber
-                        }
-                        :{" "}
-                        {
-                          item.sectionA
-                            .title
-                        }
-                      </span>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
 
-                      <span className="text-slate-400">
-                        Page{" "}
-                        {
-                          item.sectionA
-                            .page
-                        }
-                      </span>
-                    </div>
-
-                    <p className="mt-3 rounded-lg bg-white p-3 text-xs italic leading-6 text-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                      "
-                      {
-                        item.sectionA
-                          .text
+                    <Section
+                      title={
+                        item.sectionA.title
                       }
-                      "
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-red-200 bg-red-50/30 p-4 dark:border-red-900/40 dark:bg-red-950/20">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-bold text-red-700 dark:text-red-300">
-                        {
-                          item.sectionB
-                            .sectionNumber
-                        }
-                        :{" "}
-                        {
-                          item.sectionB
-                            .title
-                        }
-                      </span>
-
-                      <span className="text-slate-400">
-                        Page{" "}
-                        {
-                          item.sectionB
-                            .page
-                        }
-                      </span>
-                    </div>
-
-                    <p className="mt-3 rounded-lg bg-white p-3 text-xs italic leading-6 text-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                      "
-                      {
-                        item.sectionB
-                          .text
+                      text={
+                        item.sectionA.text
                       }
-                      "
-                    </p>
+                      page={
+                        item.sectionA.page
+                      }
+                    />
+
+
+                    <Section
+                      title={
+                        item.sectionB.title
+                      }
+                      text={
+                        item.sectionB.text
+                      }
+                      page={
+                        item.sectionB.page
+                      }
+                    />
+
                   </div>
-                </div>
 
-                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
-                  <div className="flex gap-2 text-xs">
-                    <Sparkles className="h-4 w-4 shrink-0 text-cyan-500" />
 
-                    <div>
-                      <strong className="text-slate-900 dark:text-white">
-                        AI Finding:{" "}
-                      </strong>
+                  <div className="mt-4 rounded-xl bg-slate-900/70 p-4">
 
-                      <span className="text-slate-600 dark:text-slate-400">
+                    <div className="flex gap-2">
+
+                      <AlertCircle className="h-4 w-4 text-amber-400" />
+
+                      <p className="text-xs text-slate-400">
+
                         {
                           item.aiFinding
                         }
-                      </span>
+
+                      </p>
+
                     </div>
+
                   </div>
 
-                  <div className="mt-3 flex gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-800">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
 
-                    <div>
-                      <strong className="text-slate-900 dark:text-white">
-                        Impact:{" "}
-                      </strong>
+                  <div className="mt-4 flex justify-end">
 
-                      <span className="text-slate-600 dark:text-slate-400">
-                        {
-                          item.impactDescription
+                    {item.reviewed ? (
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          markContradictionReviewed(
+                            item.id,
+                            false
+                          )
                         }
-                      </span>
-                    </div>
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-white"
+                      >
+
+                        <RotateCcw className="h-4 w-4" />
+
+                        Reopen
+
+                      </button>
+
+                    ) : (
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          markContradictionReviewed(
+                            item.id,
+                            true
+                          )
+                        }
+                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white"
+                      >
+
+                        <Check className="h-4 w-4" />
+
+                        Mark Reviewed
+
+                      </button>
+
+                    )}
+
                   </div>
+
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleOpenEvidence(
-                        item.sectionB.page,
-                        item.sectionB.sectionNumber,
-                        item.title
-                      )
-                    }
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-600 dark:text-cyan-400"
-                  >
-                    <FileSearch className="h-4 w-4" />
+              )
+            )}
 
-                    View Evidence
-                  </button>
+          </div>
 
-                  {item.reviewed ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        markContradictionReviewed(
-                          item.id,
-                          false
-                        )
-                      }
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
+        )}
 
-                      Reopen
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        markContradictionReviewed(
-                          item.id,
-                          true
-                        )
-                      }
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-
-                      Mark Reviewed
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          )}
-
-          {filteredContradictions.length ===
-            0 && (
-            <div className="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-              <Scale className="mx-auto h-10 w-10 text-slate-400" />
-
-              <p className="mt-3 font-bold text-slate-600 dark:text-slate-300">
-                No contradiction findings.
-              </p>
-            </div>
-          )}
-        </div>
       </div>
     );
   };
+
+
+function Card({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-[#0c1427] p-4">
+
+      <p className="text-xs font-bold uppercase text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-2 text-3xl font-extrabold text-white">
+        {value}
+      </p>
+
+    </div>
+  );
+}
+
+
+function Section({
+  title,
+  text,
+  page,
+}: {
+  title: string;
+  text: string;
+  page: number;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+
+      <div className="flex justify-between">
+
+        <span className="text-xs font-bold text-cyan-400">
+          {title}
+        </span>
+
+        <span className="text-xs text-slate-500">
+          Page {page}
+        </span>
+
+      </div>
+
+
+      <p className="mt-3 text-xs italic leading-6 text-slate-400">
+        "{text}"
+      </p>
+
+    </div>
+  );
+}
+
 
 export default ContradictionsPage;

@@ -3,63 +3,106 @@ import React from "react";
 import {
   BrowserRouter,
   Navigate,
+  Outlet,
   Route,
   Routes,
-  Outlet,
 } from "react-router-dom";
 
-import { GoogleOAuthProvider } from "@react-oauth/google";
+import {
+  GoogleOAuthProvider,
+} from "@react-oauth/google";
 
-import { ThemeProvider } from "./context/ThemeContext";
-import { ProjectProvider } from "./context/ProjectContext";
+import {
+  ThemeProvider,
+} from "./context/ThemeContext";
+
+import {
+  ProjectProvider,
+} from "./context/ProjectContext";
 
 import AppShell from "./components/layout/AppShell";
 
-// Authentication
 import LoginPage from "./pages/LoginPage";
-import { RegisterPage } from "./pages/RegisterPage";
+
+import {
+  RegisterPage,
+} from "./pages/RegisterPage";
+
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
-// Main
-import { DashboardPage } from "./pages/DashboardPage";
-import { ReportsPage } from "./pages/ReportsPage";
-import { SettingsPage } from "./pages/SettingsPage";
-import { ProfilePage } from "./pages/ProfilePage";
+import {
+  DashboardPage,
+} from "./pages/DashboardPage";
 
-// DPR
-import { ContradictionsPage } from "./pages/ContradictionsPage";
-import { DprAnalysisPage } from "./pages/DprAnalysisPage";
-import { DprCopilotPage } from "./pages/DprCopilotPage";
-import { EvidenceViewerPage } from "./pages/EvidenceViewerPage";
-import { MitigationAdvisorPage } from "./pages/MitigationAdvisorPage";
-import { RiskIntelligencePage } from "./pages/RiskIntelligencePage";
-import { UploadDprPage } from "./pages/UploadDprPage";
-import { WhatIfSimulatorPage } from "./pages/WhatIfSimulatorPage";
+import {
+  ReportsPage,
+} from "./pages/ReportsPage";
 
+import {
+  SettingsPage,
+} from "./pages/SettingsPage";
 
-/* ============================================================
-   AUTH
-============================================================ */
+import {
+  ProfilePage,
+} from "./pages/ProfilePage";
+
+import {
+  DprAnalysisPage,
+} from "./pages/DprAnalysisPage";
+
+import {
+  ContradictionsPage,
+} from "./pages/ContradictionsPage";
+
+import {
+  DprCopilotPage,
+} from "./pages/DprCopilotPage";
+
+import {
+  EvidenceViewerPage,
+} from "./pages/EvidenceViewerPage";
+
+import {
+  RiskIntelligencePage,
+} from "./pages/RiskIntelligencePage";
+
+import {
+  MitigationAdvisorPage,
+} from "./pages/MitigationAdvisorPage";
+
+import {
+  UploadDprPage,
+} from "./pages/UploadDprPage";
+
+import {
+  WhatIfSimulatorPage,
+} from "./pages/WhatIfSimulatorPage";
+
 
 function isAuthenticated(): boolean {
+
   const token =
-    localStorage.getItem("access_token");
+    localStorage.getItem(
+      "access_token"
+    );
+
 
   return Boolean(
     token &&
-    token.trim() !== ""
+    token.trim()
   );
 }
 
 
-/* ============================================================
-   PROTECTED ROUTE
-============================================================ */
+function ProtectedRoute():
+  React.ReactElement {
 
-function ProtectedRoute() {
+  if (
+    !isAuthenticated()
+  ) {
 
-  if (!isAuthenticated()) {
     return (
       <Navigate
         to="/login"
@@ -68,27 +111,51 @@ function ProtectedRoute() {
     );
   }
 
-  return <Outlet />;
+
+  return (
+    <Outlet />
+  );
 }
 
 
-/* ============================================================
-   GOOGLE
-============================================================ */
+function PublicOnlyRoute({
+  children,
+}: {
+  children:
+    React.ReactElement;
+}) {
+
+  if (
+    isAuthenticated()
+  ) {
+
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
+  }
+
+
+  return children;
+}
+
 
 const GOOGLE_CLIENT_ID =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+  import.meta.env
+    .VITE_GOOGLE_CLIENT_ID ||
+  "";
 
 
-/* ============================================================
-   APP
-============================================================ */
-
-function App() {
+function App():
+  React.ReactElement {
 
   return (
     <GoogleOAuthProvider
-      clientId={GOOGLE_CLIENT_ID}
+      clientId={
+        GOOGLE_CLIENT_ID
+      }
     >
 
       <BrowserRouter>
@@ -99,136 +166,153 @@ function App() {
 
             <Routes>
 
-              {/* ==================================================
-                  PUBLIC
-              ================================================== */}
+              {/* PUBLIC */}
 
               <Route
                 path="/login"
-                element={<LoginPage />}
+                element={
+                  <PublicOnlyRoute>
+                    <LoginPage />
+                  </PublicOnlyRoute>
+                }
               />
 
               <Route
                 path="/register"
-                element={<RegisterPage />}
+                element={
+                  <PublicOnlyRoute>
+                    <RegisterPage />
+                  </PublicOnlyRoute>
+                }
               />
 
               <Route
                 path="/forgot-password"
-                element={<ForgotPasswordPage />}
+                element={
+                  <PublicOnlyRoute>
+                    <ForgotPasswordPage />
+                  </PublicOnlyRoute>
+                }
               />
 
               <Route
                 path="/reset-password"
-                element={<ResetPasswordPage />}
+                element={
+                  <ResetPasswordPage />
+                }
               />
 
 
-              {/* ==================================================
-                  PROTECTED
-              ================================================== */}
+              {/* PROTECTED */}
 
               <Route
-                element={<ProtectedRoute />}
+                element={
+                  <ProtectedRoute />
+                }
               >
 
                 <Route
-                  element={<AppShell />}
+                  element={
+                    <AppShell />
+                  }
                 >
-
-                  {/* Dashboard */}
 
                   <Route
                     path="/dashboard"
-                    element={<DashboardPage />}
+                    element={
+                      <DashboardPage />
+                    }
                   />
-
-
-                  {/* DPR Analysis */}
 
                   <Route
                     path="/dpr-analysis"
-                    element={<DprAnalysisPage />}
+                    element={
+                      <DprAnalysisPage />
+                    }
                   />
-
-
-                  {/* Copilot */}
 
                   <Route
                     path="/dpr-copilot"
-                    element={<DprCopilotPage />}
+                    element={
+                      <DprCopilotPage />
+                    }
                   />
-
-
-                  {/* Contradictions */}
 
                   <Route
                     path="/contradictions"
-                    element={<ContradictionsPage />}
+                    element={
+                      <ContradictionsPage />
+                    }
                   />
-
-
-                  {/* Evidence */}
 
                   <Route
                     path="/evidence-viewer"
-                    element={<EvidenceViewerPage />}
+                    element={
+                      <EvidenceViewerPage />
+                    }
                   />
 
-
-                  {/* Risk */}
+                  <Route
+                    path="/evidence"
+                    element={
+                      <EvidenceViewerPage />
+                    }
+                  />
 
                   <Route
                     path="/risk-intelligence"
-                    element={<RiskIntelligencePage />}
+                    element={
+                      <RiskIntelligencePage />
+                    }
                   />
-
-
-                  {/* Mitigation */}
 
                   <Route
                     path="/mitigation-advisor"
-                    element={<MitigationAdvisorPage />}
+                    element={
+                      <MitigationAdvisorPage />
+                    }
                   />
-
-
-                  {/* Upload */}
 
                   <Route
                     path="/upload-dpr"
-                    element={<UploadDprPage />}
+                    element={
+                      <UploadDprPage />
+                    }
                   />
-
-
-                  {/* What If */}
 
                   <Route
                     path="/what-if-simulator"
-                    element={<WhatIfSimulatorPage />}
+                    element={
+                      <WhatIfSimulatorPage />
+                    }
                   />
 
-
-                  {/* Reports */}
+                  <Route
+                    path="/what-if"
+                    element={
+                      <WhatIfSimulatorPage />
+                    }
+                  />
 
                   <Route
                     path="/reports"
-                    element={<ReportsPage />}
+                    element={
+                      <ReportsPage />
+                    }
                   />
-
-
-                  {/* Profile */}
 
                   <Route
                     path="/profile"
-                    element={<ProfilePage />}
+                    element={
+                      <ProfilePage />
+                    }
                   />
-
-
-                  {/* Settings */}
 
                   <Route
                     path="/settings"
-                    element={<SettingsPage />}
+                    element={
+                      <SettingsPage />
+                    }
                   />
 
                 </Route>
@@ -236,9 +320,7 @@ function App() {
               </Route>
 
 
-              {/* ==================================================
-                  ROOT
-              ================================================== */}
+              {/* ROOT */}
 
               <Route
                 path="/"
@@ -255,9 +337,7 @@ function App() {
               />
 
 
-              {/* ==================================================
-                  UNKNOWN
-              ================================================== */}
+              {/* UNKNOWN */}
 
               <Route
                 path="*"
@@ -284,5 +364,6 @@ function App() {
     </GoogleOAuthProvider>
   );
 }
+
 
 export default App;

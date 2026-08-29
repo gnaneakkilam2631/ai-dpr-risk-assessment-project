@@ -17,9 +17,7 @@ import {
 
 import { useNavigate } from "react-router-dom";
 
-import {
-  useProject,
-} from "../context/ProjectContext";
+import { useProject } from "../context/useProject";
 
 import {
   copilotService,

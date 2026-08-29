@@ -8,9 +8,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-import {
-  useProject,
-} from "../context/ProjectContext";
+import { useProject } from "../context/useProject";
 
 export const WhatIfSimulatorPage: React.FC =
   () => {

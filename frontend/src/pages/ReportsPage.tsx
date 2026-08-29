@@ -1,31 +1,48 @@
-import React from "react";
+import React, {
+  useEffect,
+} from "react";
 
 import {
-  FileText,
-  ShieldAlert,
-  ShieldCheck,
   AlertTriangle,
   Download,
+  FileText,
+  ShieldCheck,
 } from "lucide-react";
 
 import {
-  Mitigation,
   useProject,
-} from "../context/ProjectContext";
+} from "../context/useProject";
 
-export const ReportsPage: React.FC =
+
+export const ReportsPage:
+  React.FC =
   () => {
+
     const {
       activeProject,
       healthScore,
       riskAssessment,
       contradictions,
       mitigations,
-      addToast,
+      analyzeActiveProject,
     } =
       useProject();
 
-    function handleExport() {
+
+    useEffect(
+      () => {
+
+        void analyzeActiveProject();
+
+      },
+      [
+        analyzeActiveProject,
+      ]
+    );
+
+
+    function exportReport() {
+
       const report = {
         project:
           activeProject,
@@ -46,6 +63,7 @@ export const ReportsPage: React.FC =
           new Date().toISOString(),
       };
 
+
       const blob =
         new Blob(
           [
@@ -56,73 +74,89 @@ export const ReportsPage: React.FC =
             ),
           ],
           {
-            type: "application/json",
+            type:
+              "application/json",
           }
         );
+
 
       const url =
         URL.createObjectURL(
           blob
         );
 
-      const anchor =
+
+      const link =
         document.createElement(
           "a"
         );
 
-      anchor.href = url;
 
-      anchor.download =
+      link.href =
+        url;
+
+
+      link.download =
         `${activeProject.name || "DPR"}-risk-report.json`;
 
-      anchor.click();
+
+      link.click();
+
 
       URL.revokeObjectURL(
         url
       );
-
-      addToast(
-        "Report exported successfully.",
-        "success"
-      );
     }
+
 
     return (
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+
           <div>
-            <h1 className="flex items-center gap-2 text-3xl font-extrabold text-slate-900 dark:text-white">
-              <FileText className="h-7 w-7 text-cyan-500" />
 
-              DPR Assessment Report
-            </h1>
+            <div className="flex items-center gap-2">
 
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Consolidated project risk, health, contradiction and mitigation report.
+              <FileText className="h-7 w-7 text-cyan-400" />
+
+              <h1 className="text-3xl font-extrabold text-white">
+                DPR Assessment Report
+              </h1>
+
+            </div>
+
+            <p className="mt-2 text-sm text-slate-400">
+              Consolidated project risk and mitigation report.
             </p>
+
           </div>
+
 
           <button
             type="button"
             onClick={
-              handleExport
+              exportReport
             }
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-3 text-sm font-bold text-white"
           >
+
             <Download className="h-4 w-4" />
 
             Export Report
+
           </button>
+
         </div>
 
-        {/* PROJECT */}
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0c1427]">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="rounded-2xl border border-slate-800 bg-[#0c1427] p-5">
+
+          <p className="text-xs uppercase text-slate-500">
             Project
           </p>
 
-          <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+          <h2 className="mt-1 text-xl font-extrabold text-white">
             {
               activeProject.name
             }
@@ -131,183 +165,163 @@ export const ReportsPage: React.FC =
           <p className="mt-1 text-sm text-slate-500">
             {
               activeProject.description ||
-              "No project description available."
+              "No description available."
             }
           </p>
+
         </div>
 
-        {/* SUMMARY */}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5 dark:border-cyan-900 dark:bg-cyan-950/20">
-            <p className="text-xs font-bold uppercase text-cyan-700 dark:text-cyan-300">
-              Document Health
-            </p>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
 
-            <p className="mt-2 text-3xl font-extrabold text-cyan-700 dark:text-cyan-400">
-              {
-                healthScore.overall
-              }
-            </p>
-          </div>
+          <ReportCard
+            label="Health"
+            value={`${healthScore.overall}/100`}
+          />
 
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-900 dark:bg-red-950/20">
-            <p className="text-xs font-bold uppercase text-red-700 dark:text-red-300">
-              Risk Score
-            </p>
 
-            <p className="mt-2 text-3xl font-extrabold text-red-700 dark:text-red-400">
-              {
-                riskAssessment.riskScore
-              }
-            </p>
-          </div>
+          <ReportCard
+            label="Risk Score"
+            value={`${riskAssessment.riskScore}/100`}
+          />
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/20">
-            <p className="text-xs font-bold uppercase text-amber-700 dark:text-amber-300">
-              Contradictions
-            </p>
 
-            <p className="mt-2 text-3xl font-extrabold text-amber-700 dark:text-amber-400">
-              {
-                contradictions.length
-              }
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/20">
-            <p className="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">
-              Mitigations
-            </p>
-
-            <p className="mt-2 text-3xl font-extrabold text-emerald-700 dark:text-emerald-400">
-              {
-                mitigations.length
-              }
-            </p>
-          </div>
-        </div>
-
-        {/* RISK DIMENSIONS */}
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0c1427]">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-red-500" />
-
-            <h2 className="font-bold text-slate-900 dark:text-white">
-              Risk Dimensions
-            </h2>
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3">
-            {Object.entries(
-              riskAssessment.dimensions
-            ).map(
-              (
-                [
-                  name,
-                  value,
-                ]: [
-                  string,
-                  number
-                ]
-              ) => (
-                <div
-                  key={
-                    name
-                  }
-                  className="rounded-xl bg-slate-50 p-4 dark:bg-slate-900"
-                >
-                  <p className="text-xs font-bold uppercase text-slate-500">
-                    {name.replace(
-                      "Risk",
-                      ""
-                    )}
-                  </p>
-
-                  <p className="mt-2 text-2xl font-extrabold text-slate-900 dark:text-white">
-                    {Math.round(
-                      value
-                    )}
-                  </p>
-                </div>
+          <ReportCard
+            label="Risks"
+            value={
+              String(
+                riskAssessment.riskCount
               )
-            )}
-          </div>
+            }
+          />
+
+
+          <ReportCard
+            label="Contradictions"
+            value={
+              String(
+                contradictions.length
+              )
+            }
+          />
+
         </div>
 
-        {/* MITIGATIONS */}
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0c1427]">
+        <div className="rounded-2xl border border-slate-800 bg-[#0c1427] p-5">
+
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-emerald-500" />
 
-            <h2 className="font-bold text-slate-900 dark:text-white">
+            <ShieldCheck className="h-5 w-5 text-emerald-400" />
+
+            <h2 className="font-bold text-white">
               Priority Mitigations
             </h2>
+
           </div>
 
+
           <div className="mt-4 space-y-3">
-            {mitigations
-              .slice(0, 5)
-              .map(
-                (
-                  mitigation: Mitigation,
-                  index: number
-                ) => (
-                  <div
-                    key={
-                      mitigation.id
-                    }
-                    className="rounded-xl border border-slate-200 p-4 dark:border-slate-800"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold uppercase text-slate-500">
-                          Priority #
-                          {
-                            index +
-                            1
-                          }
-                        </p>
 
-                        <h3 className="mt-1 font-bold text-slate-900 dark:text-white">
-                          {
-                            mitigation.riskTitle
-                          }
-                        </h3>
+            {mitigations.slice(
+              0,
+              5
+            ).map(
+              (
+                item
+              ) => (
 
-                        <p className="mt-1 text-sm text-slate-500">
-                          {
-                            mitigation.action
-                          }
-                        </p>
-                      </div>
+                <div
+                  key={
+                    item.id
+                  }
+                  className="rounded-xl border border-slate-800 p-4"
+                >
 
-                      <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  <div className="flex justify-between gap-3">
+
+                    <div>
+
+                      <p className="text-xs uppercase text-slate-500">
                         {
-                          mitigation.status
+                          item.category
                         }
-                      </span>
+                      </p>
+
+                      <h3 className="mt-1 font-bold text-white">
+                        {
+                          item.riskTitle
+                        }
+                      </h3>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                        {
+                          item.action
+                        }
+                      </p>
+
                     </div>
+
+
+                    <span className="text-xs font-bold text-slate-400">
+                      {
+                        item.status
+                      }
+                    </span>
+
                   </div>
-                )
-              )}
+
+                </div>
+
+              )
+            )}
+
 
             {mitigations.length ===
               0 && (
-              <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
-                <AlertTriangle className="mx-auto h-8 w-8 text-slate-400" />
+
+              <div className="rounded-xl border border-dashed border-slate-700 p-8 text-center">
+
+                <AlertTriangle className="mx-auto h-8 w-8 text-slate-500" />
 
                 <p className="mt-2 text-sm text-slate-500">
                   No mitigation recommendations yet.
                 </p>
+
               </div>
+
             )}
+
           </div>
+
         </div>
+
       </div>
     );
   };
+
+
+function ReportCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-[#0c1427] p-5">
+
+      <p className="text-xs uppercase text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-2 text-3xl font-extrabold text-white">
+        {value}
+      </p>
+
+    </div>
+  );
+}
+
 
 export default ReportsPage;

@@ -10,7 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { useProject } from "../context/ProjectContext";
+import { useProject } from "../context/useProject";
 import { RiskBadge } from "../components/common/RiskBadge";
 
 type EvidenceFinding = {
